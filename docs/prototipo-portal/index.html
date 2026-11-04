@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo Portal del Cliente</title>
+<meta name="description" content="Prototipo navegable de la App Portal del Cliente · CRM Andino Perú · Proyecto Final, Semana 11">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --azul:#1F3A5F; --azul-osc:#142842; --turq:#1B998B; --dorado:#F2A93B; --rojo:#C0392B; --verde:#1E9E5A;
+  --fondo:#F5F7FA; --sup:#FFFFFF; --nieve:#E8EEF5; --txt:#1C2430; --txt2:#5B6675; --borde:#D6DEE8;
+  --pag:#EEF2F7; --pag-txt:#1C2430; --pag-txt2:#5B6675; --panel:#FFFFFF; --panel-borde:#D6DEE8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --pag:#0F1724; --pag-txt:#E8EEF5; --pag-txt2:#A3B1C2; --panel:#172234; --panel-borde:#26354B; }
+}
+:root[data-theme="dark"]{ --pag:#0F1724; --pag-txt:#E8EEF5; --pag-txt2:#A3B1C2; --panel:#172234; --panel-borde:#26354B; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--pag);color:var(--pag-txt);font-family:Roboto,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+.cab{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--panel-borde);background:var(--panel)}
+.cab svg{width:36px;height:36px;flex:none}
+.cab h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.01em}
+.cab p{margin:2px 0 0;font-size:13px;color:var(--pag-txt2)}
+.cab .der{margin-left:auto;display:flex;gap:8px}
+.btn-pag{border:1px solid var(--panel-borde);background:transparent;color:var(--pag-txt);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:500}
+.btn-pag[aria-pressed="true"]{background:var(--azul);border-color:var(--azul);color:#fff}
+.lay{display:grid;grid-template-columns:250px minmax(380px,1fr) 340px;gap:24px;padding:24px;max-width:1320px;margin:0 auto;align-items:start}
+nav.mapa{background:var(--panel);border:1px solid var(--panel-borde);border-radius:16px;padding:12px;position:sticky;top:16px}
+.mapa h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--pag-txt2);margin:12px 8px 6px}
+.mapa h2:first-child{margin-top:4px}
+.mapa button{display:flex;width:100%;text-align:left;border:0;background:transparent;color:var(--pag-txt);padding:8px 10px;border-radius:10px;font-size:14px;gap:8px;align-items:center}
+.mapa button .n{font:500 11px "Roboto Mono",monospace;color:var(--pag-txt2);width:20px}
+.mapa button:hover{background:color-mix(in srgb,var(--azul) 8%,transparent)}
+.mapa button[aria-current="true"]{background:var(--azul);color:#fff}
+.mapa button[aria-current="true"] .n{color:#cfe0f3}
+.centro{display:flex;flex-direction:column;align-items:center;gap:12px}
+.ayuda{font-size:13px;color:var(--pag-txt2);text-align:center;max-width:380px}
+.nota{background:var(--panel);border:1px solid var(--panel-borde);border-radius:16px;padding:18px;position:sticky;top:16px}
+.nota h3{margin:0 0 4px;font-size:17px}
+.nota .sub{color:var(--pag-txt2);font-size:13px;margin:0 0 14px;line-height:1.5}
+.nota h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--pag-txt2);margin:14px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip-n{font:500 12px "Roboto Mono",monospace;padding:3px 8px;border-radius:6px;background:color-mix(in srgb,var(--azul) 10%,transparent);color:var(--pag-txt)}
+.chip-n.t{background:color-mix(in srgb,var(--turq) 16%,transparent)}
+.chip-n.d{background:color-mix(in srgb,var(--dorado) 22%,transparent)}
+.api{font:500 12px/1.6 "Roboto Mono",monospace;margin:0;padding:0;list-style:none}
+.api b{display:inline-block;min-width:44px;color:var(--turq)}
+.nota ul.reg{margin:0;padding-left:18px;font-size:13px;line-height:1.55;color:var(--pag-txt)}
+.todas{display:none;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:28px;padding:24px;max-width:1500px;margin:0 auto}
+.todas figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+.todas figcaption{font-size:13px;font-weight:500;color:var(--pag-txt)}
+body.modo-todas .lay{display:none}
+body.modo-todas .todas{display:grid}
+body.solo{background:transparent}
+body.solo .cab,body.solo nav.mapa,body.solo .nota,body.solo .ayuda{display:none}
+body.solo .lay{display:block;padding:0}
+body.solo .centro{display:block}
+
+/* ============ TELÉFONO ============ */
+.tel{width:360px;height:740px;border-radius:44px;background:#0b0f16;padding:10px;box-shadow:0 20px 50px -20px rgba(15,23,36,.5);flex:none}
+body.solo .tel{box-shadow:none}
+.pant{width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--fondo);color:var(--txt);position:relative;display:flex;flex-direction:column;font-size:14px}
+.estado{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:12px;font-weight:500;color:var(--txt);flex:none}
+.estado.osc{background:var(--azul);color:#fff}
+.estado i{display:inline-flex;gap:4px;font-style:normal}
+.estado i span{width:14px;height:9px;border-radius:2px;background:currentColor;opacity:.85}
+.bar{display:flex;align-items:center;gap:8px;padding:6px 8px 10px;background:var(--azul);color:#fff;flex:none}
+.bar.clara{background:var(--fondo);color:var(--txt)}
+.bar h2{font-size:18px;font-weight:500;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:inherit;display:grid;place-items:center;position:relative}
+.ib:hover{background:rgba(255,255,255,.12)}
+.bar.clara .ib:hover{background:rgba(0,0,0,.06)}
+.ib .pto{position:absolute;top:7px;right:7px;min-width:16px;height:16px;border-radius:8px;background:var(--dorado);color:var(--azul-osc);font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+svg.ic{width:22px;height:22px;fill:currentColor;flex:none}
+.cuerpo{flex:1;overflow-y:auto;padding:14px 16px 18px;scrollbar-width:none}
+.cuerpo::-webkit-scrollbar{display:none}
+.nav{display:flex;background:#fff;border-top:1px solid var(--borde);flex:none;padding:6px 4px 10px}
+.nav button{flex:1;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:var(--txt2)}
+.nav button span.p{width:56px;height:28px;border-radius:14px;display:grid;place-items:center}
+.nav button.act{color:var(--azul)}
+.nav button.act span.p{background:var(--nieve)}
+.card{background:var(--sup);border-radius:16px;padding:14px;box-shadow:0 1px 2px rgba(15,23,36,.06),0 0 0 1px rgba(15,23,36,.04);margin-bottom:12px}
+.card h3{margin:0 0 4px;font-size:15px;font-weight:500}
+.mut{color:var(--txt2);font-size:13px;line-height:1.45}
+.sec{font-size:13px;font-weight:500;color:var(--txt2);margin:16px 2px 8px;display:flex;justify-content:space-between}
+.sec a{color:var(--turq);text-decoration:none;cursor:pointer}
+.b{border:0;border-radius:20px;height:44px;padding:0 20px;font-weight:500;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.b.p{background:var(--azul);color:#fff}
+.b.p:disabled{background:#c5cfdb;color:#fff;cursor:not-allowed}
+.b.t{background:var(--turq);color:#fff}
+.b.o{background:transparent;color:var(--azul);box-shadow:inset 0 0 0 1px var(--borde)}
+.b.r{background:transparent;color:var(--rojo);box-shadow:inset 0 0 0 1px #e6c3bf}
+.b.txt{background:transparent;color:var(--azul);height:36px;width:auto;padding:0 8px}
+.fila-b{display:flex;gap:10px;margin-top:10px}
+.campo{margin-bottom:12px}
+.campo label{display:block;font-size:12px;font-weight:500;color:var(--txt2);margin:0 0 4px 4px}
+.campo input,.campo textarea,.campo select{width:100%;border:1px solid var(--borde);border-radius:10px;padding:11px 12px;font:inherit;font-size:14px;color:var(--txt);background:#fff}
+.campo textarea{resize:none;height:92px}
+.campo input:focus,.campo textarea:focus,.campo select:focus{outline:2px solid var(--azul);outline-offset:-1px}
+.campo .ayu{font-size:11.5px;color:var(--txt2);margin:4px 4px 0;display:flex;justify-content:space-between}
+.campo.err input,.campo.err textarea{border-color:var(--rojo)}
+.campo.err .ayu{color:var(--rojo)}
+.campo.ok input{border-color:var(--verde)}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.45;color:var(--txt);margin:8px 2px}
+.chk input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--azul);flex:none}
+.chk a{color:var(--turq)}
+.logo{width:72px;height:72px;margin:18px auto 10px;display:block}
+.cent{text-align:center}
+.h1{font-size:22px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.02em}
+.tag.az{background:var(--nieve);color:var(--azul)}
+.tag.tq{background:#d7f1ee;color:#11695f}
+.tag.dr{background:#fdecd0;color:#8a5a0c}
+.tag.vd{background:#d9f2e4;color:#156b3f}
+.tag.rj{background:#f8dcd9;color:#8e2a1f}
+.tag.gr{background:#e7ebf0;color:#4a5563}
+.dest{background:linear-gradient(135deg,var(--azul),#2a5585);color:#fff;border-radius:18px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden}
+.dest::after{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(242,169,59,.18)}
+.dest .k{font-size:12px;opacity:.85}
+.dest .v{font-size:24px;font-weight:700;margin:4px 0}
+.dest .b{background:var(--dorado);color:var(--azul-osc);height:38px;width:auto;margin-top:8px;position:relative;z-index:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.acc{background:#fff;border-radius:16px;padding:14px;border:0;text-align:left;box-shadow:0 1px 2px rgba(15,23,36,.06),0 0 0 1px rgba(15,23,36,.04);color:var(--txt)}
+.acc .icb{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;margin-bottom:10px}
+.acc b{display:block;font-size:13.5px;font-weight:500}
+.acc small{color:var(--txt2);font-size:12px}
+.li{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--borde);cursor:pointer}
+.li:last-child{border-bottom:0}
+.li .ico{width:40px;height:40px;border-radius:12px;background:var(--nieve);color:var(--azul);display:grid;place-items:center;flex:none}
+.li .tx{flex:1;min-width:0}
+.li .tx b{display:block;font-weight:500;font-size:14px}
+.li .tx small{color:var(--txt2);font-size:12.5px}
+.tabs{display:flex;background:#fff;border-bottom:1px solid var(--borde);flex:none}
+.tabs button{flex:1;border:0;background:transparent;padding:12px 0;font-weight:500;color:var(--txt2);border-bottom:3px solid transparent}
+.tabs button.act{color:var(--azul);border-color:var(--azul)}
+.pasos{display:flex;align-items:flex-start;margin:10px 0 4px}
+.pasos div{flex:1;text-align:center;font-size:11px;color:var(--txt2);position:relative}
+.pasos div::before{content:"";display:block;width:14px;height:14px;border-radius:50%;margin:0 auto 6px;background:#fff;border:2px solid var(--borde);position:relative;z-index:1}
+.pasos div::after{content:"";position:absolute;top:7px;left:-50%;width:100%;height:2px;background:var(--borde)}
+.pasos div:first-child::after{display:none}
+.pasos div.h{color:var(--txt);font-weight:500}
+.pasos div.h::before{background:var(--turq);border-color:var(--turq)}
+.pasos div.h::after{background:var(--turq)}
+.pasos div.c::before{box-shadow:0 0 0 4px rgba(27,153,139,.2)}
+.tabla{width:100%;border-collapse:collapse;font-size:13px}
+.tabla td{padding:8px 0;border-bottom:1px solid var(--borde);vertical-align:top}
+.tabla td:last-child{text-align:right;white-space:nowrap}
+.tot td{border:0;padding:4px 0}
+.tot tr:last-child td{font-size:17px;font-weight:700;padding-top:8px}
+.ok-ic{width:76px;height:76px;border-radius:50%;background:#d9f2e4;color:var(--verde);display:grid;place-items:center;margin:26px auto 14px}
+.ok-ic svg{width:40px;height:40px}
+.codigo{font:500 22px "Roboto Mono",monospace;letter-spacing:.04em;color:var(--azul);margin:6px 0}
+.hoja{position:absolute;inset:0;background:rgba(15,23,36,.45);display:flex;align-items:flex-end;z-index:5}
+.hoja .in{background:#fff;width:100%;border-radius:24px 24px 0 0;padding:10px 18px 20px}
+.hoja .asa{width:36px;height:4px;border-radius:2px;background:var(--borde);margin:0 auto 12px}
+.radio{display:flex;align-items:center;gap:10px;padding:10px 4px;font-size:14px;cursor:pointer}
+.radio input{width:18px;height:18px;accent-color:var(--azul)}
+.estrellas{display:flex;justify-content:center;gap:6px;margin:12px 0 6px}
+.estrellas button{border:0;background:transparent;color:#cdd5df;padding:2px}
+.estrellas button.on{color:var(--dorado)}
+.estrellas svg{width:40px;height:40px;fill:currentColor}
+.tl{list-style:none;margin:0;padding:0 0 0 4px}
+.tl li{position:relative;padding:0 0 14px 22px;font-size:13px}
+.tl li::before{content:"";position:absolute;left:0;top:4px;width:10px;height:10px;border-radius:50%;background:var(--turq)}
+.tl li::after{content:"";position:absolute;left:4px;top:16px;bottom:0;width:2px;background:var(--borde)}
+.tl li:last-child::after{display:none}
+.tl li small{display:block;color:var(--txt2);font-size:11.5px}
+.banner{display:flex;gap:10px;align-items:center;background:#fdecd0;color:#6b4708;border-radius:12px;padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+.snack{position:absolute;left:12px;right:12px;bottom:76px;background:#283447;color:#fff;border-radius:10px;padding:12px 14px;font-size:13px;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:6;animation:sube .25s ease}
+@keyframes sube{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+.prod{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--borde)}
+.prod:last-child{border:0}
+.prod .tx{flex:1}
+.prod .tx b{font-weight:500;font-size:13.5px;display:block}
+.prod .tx small{color:var(--txt2);font-size:12px}
+.step{display:flex;align-items:center;border:1px solid var(--borde);border-radius:18px}
+.step button{border:0;background:transparent;width:30px;height:30px;color:var(--azul);display:grid;place-items:center}
+.step span{min-width:18px;text-align:center;font-weight:500}
+.sw{width:46px;height:26px;border-radius:13px;background:#c5cfdb;position:relative;border:0;flex:none;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s}
+.sw.on{background:var(--turq)}
+.sw.on::after{left:23px}
+.fab{position:absolute;right:16px;bottom:84px;height:52px;border-radius:16px;background:var(--dorado);color:var(--azul-osc);border:0;padding:0 18px;display:flex;align-items:center;gap:8px;font-weight:500;box-shadow:0 6px 16px rgba(15,23,36,.25)}
+.foto{border:1.5px dashed var(--borde);border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;color:var(--txt2);font-size:13px;cursor:pointer;background:#fff}
+.foto.lista{border-style:solid;border-color:var(--turq);color:var(--txt)}
+.cats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.cats button{border:1px solid var(--borde);background:#fff;border-radius:8px;padding:7px 12px;font-size:13px;color:var(--txt)}
+.cats button.on{background:var(--nieve);border-color:var(--azul);color:var(--azul);font-weight:500}
+.oferta{border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(15,23,36,.06),0 0 0 1px rgba(15,23,36,.04);margin-bottom:12px}
+.oferta .top{padding:14px;background:linear-gradient(135deg,#11695f,var(--turq));color:#fff}
+.oferta .top.az{background:linear-gradient(135deg,var(--azul),#2a5585)}
+.oferta .top b{font-size:17px;display:block;margin-top:4px}
+.oferta .bot{padding:12px 14px}
+.kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--borde);font-size:13.5px}
+.kv span:first-child{color:var(--txt2)}
+.kv:last-child{border:0}
+@media (max-width:1100px){
+  .lay{grid-template-columns:1fr;padding:16px}
+  nav.mapa,.nota{position:static}
+  .mapa{display:flex;flex-wrap:wrap;gap:4px}
+  .mapa h2{width:100%}
+  .mapa button{width:auto}
+}
+@media (max-width:420px){
+  .tel{width:100%;max-width:360px;height:720px;padding:6px;border-radius:38px}
+  .cab{padding:12px 16px;flex-wrap:wrap}
+  .cab .der{margin-left:0}
+}
+</style>
+</head>
+<body>
+<header class="cab">
+  <svg viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="54" fill="#1F3A5F"/><g transform="translate(54 54) scale(1.2) translate(-54 -54)"><path fill="#1B998B" d="M26,76 L48,40 L70,76 Z"/><path fill="#E8EEF5" d="M44,76 L64,50 L84,76 Z"/><path fill="none" stroke="#F2A93B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M28,66 L44,58 L56,64 L74,44"/><path fill="#F2A93B" d="M81,36 L68,41 L77,50 Z"/></g></svg>
+  <div>
+    <h1>CRM Andino · App Portal del Cliente</h1>
+    <p>Prototipo navegable · Proyecto Final, Semana 11 · Jean Piero Huamani Rodriguez</p>
+  </div>
+  <div class="der">
+    <button class="btn-pag" id="btnUna" aria-pressed="true">Navegar</button>
+    <button class="btn-pag" id="btnTodas" aria-pressed="false">Ver todas las pantallas</button>
+  </div>
+</header>
+
+<div class="lay">
+  <nav class="mapa" id="mapa" aria-label="Pantallas"></nav>
+  <div class="centro">
+    <div id="telefono"></div>
+    <p class="ayuda">Toca los botones dentro del celular para recorrer el flujo, o elige una pantalla a la izquierda.</p>
+  </div>
+  <aside class="nota" id="nota" aria-live="polite"></aside>
+</div>
+<section class="todas" id="todas" aria-label="Todas las pantallas"></section>
+
+<script>
+/* ===================== Íconos (Material, inline) ===================== */
+const IC = {
+  home:'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+  back:'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
+  add:'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+  remove:'M19 13H5v-2h14v2z',
+  check:'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  close:'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  star:'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+  person:'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+  bell:'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z',
+  chev:'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+  doc:'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
+  soporte:'M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z',
+  oferta:'M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z',
+  camara:'M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z',
+  nube:'M19.35 10.04A7.49 7.49 0 0 0 12 4c-1.48 0-2.85.43-4.01 1.17l1.46 1.46C10.21 6.23 11.08 6 12 6c3.04 0 5.5 2.46 5.5 5.5v.5H19c1.66 0 3 1.34 3 3 0 1.13-.64 2.11-1.56 2.62l1.45 1.45C23.16 18.16 24 16.68 24 15c0-2.64-2.05-4.78-4.65-4.96zM3 5.27l2.75 2.74C2.56 8.15 0 10.77 0 14c0 3.31 2.69 6 6 6h11.73l2 2L21 20.73 4.27 4 3 5.27zM7.73 10l8 8H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h1.73z',
+  salir:'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
+  enviar:'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z',
+  reloj:'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z'
+};
+const ic = (n, s) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"${s ? ` style="width:${s}px;height:${s}px"` : ''}><path d="${IC[n]}"/></svg>`;
+const LOGO = `<svg class="logo" viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="54" fill="#1F3A5F"/><g transform="translate(54 54) scale(1.2) translate(-54 -54)"><path fill="#1B998B" d="M26,76 L48,40 L70,76 Z"/><path fill="#E8EEF5" d="M44,76 L64,50 L84,76 Z"/><path fill="none" stroke="#F2A93B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M28,66 L44,58 L56,64 L74,44"/><path fill="#F2A93B" d="M81,36 L68,41 L77,50 Z"/></g></svg>`;
+const soles = n => 'S/ ' + n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/* ===================== Datos de ejemplo (ficticios) ===================== */
+const CATALOGO = [
+  { id: 1, cod: 'FAC-01', nombre: 'Facturación electrónica', det: 'Licencia por usuario', precio: 1900 },
+  { id: 2, cod: 'INV-01', nombre: 'Módulo Inventario', det: 'Stock y almacenes', precio: 3200 },
+  { id: 3, cod: 'PLA-01', nombre: 'Módulo Planillas', det: 'Boletas y AFP', precio: 2800 },
+  { id: 5, cod: 'SOP-01', nombre: 'Soporte anual prioritario', det: 'Atención en 4 horas', precio: 2400 },
+  { id: 7, cod: 'CAP-01', nombre: 'Capacitación', det: 'Grupo de 10 personas', precio: 1990 }
+];
+const COT = { numero: 'COT-2026-0142', vendedor: 'Carlos Mendoza Ríos', items: [['Facturación electrónica × 5', 9500], ['Capacitación × 2', 3980]], desc: 8, vence: 12 };
+COT.subtotal = COT.items.reduce((a, i) => a + i[1], 0);
+COT.total = Math.round(COT.subtotal * (1 - COT.desc / 100) * 100) / 100;
+
+/* ===================== Estado del prototipo ===================== */
+const E = {
+  ruc: '', razon: '', contacto: '', cel: '', correo: '', clave: '', consiente: false, ofertas: true,
+  cant: { 1: 5, 2: 0, 3: 0, 5: 0, 7: 2 }, comentario: 'Necesitamos empezar en noviembre',
+  motivo: '', cat: 'FACTURACION', desc: 'No se envían las boletas a SUNAT desde ayer en la tarde', foto: true,
+  estrellas: 5, aceptada: false, interes: {}, tab: 'cot', offline: false, snack: '', hoja: false
+};
+
+/* ===================== Pantallas ===================== */
+const barra = (titulo, atras, extra = '') =>
+  `<div class="estado osc"><span>9:41</span><i><span></span><span></span></i></div>
+   <div class="bar">${atras ? `<button class="ib" data-ir="${atras}" aria-label="Atrás">${ic('back')}</button>` : '<span style="width:8px"></span>'}<h2>${titulo}</h2>${extra}</div>`;
+const navInf = act => `<div class="nav">
+  ${[['inicio', 'home', 'Inicio'], ['cotizaciones', 'doc', 'Cotizaciones'], ['servicio', 'soporte', 'Servicio'], ['perfil', 'person', 'Perfil']]
+    .map(([id, i, t]) => `<button class="${act === id ? 'act' : ''}" data-ir="${id}"><span class="p">${ic(i)}</span>${t}</button>`).join('')}
+</div>`;
+const campana = `<button class="ib" data-ir="notificaciones" aria-label="Notificaciones">${ic('bell')}<span class="pto">3</span></button>`;
+
+const rucValido = r => /^(10|15|17|20)\d{9}$/.test(r);
+const correoValido = c => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(c);
+const registroValido = () => rucValido(E.ruc) && E.razon.trim() && E.contacto.trim() && /^9\d{8}$/.test(E.cel) && correoValido(E.correo) && E.clave.length >= 8 && E.consiente;
+
+const P = {
+  login: {
+    grupo: 'Acceso', t: 'Ingresar',
+    sub: 'Pantalla de inicio de sesión del cliente. La app envía rolEsperado = cliente para que una cuenta de vendedor no pueda entrar aquí.',
+    hu: ['HU-P01'], rf: ['RF-P01'], api: [['POST', '/api/auth/login']], tablas: ['usuarios'],
+    reglas: ['Errores claros: credenciales incorrectas (401) o cuenta sin acceso a esta app (403).', 'El token JWT se guarda cifrado (DataStore) para no pedir clave cada vez.'],
+    html: () => `<div class="estado"><span>9:41</span><i><span></span><span></span></i></div>
+      <div class="cuerpo">
+        ${LOGO}
+        <div class="cent"><p class="h1">Portal CRM Andino</p><p class="mut">Cotiza, pide soporte y recibe ofertas<br>sin llamar a nadie.</p></div>
+        <div style="height:18px"></div>
+        <div class="campo"><label>Correo</label><input type="email" value="rosa@ferreteriaeltambo.pe" autocomplete="off"></div>
+        <div class="campo"><label>Contraseña</label><input type="password" value="cliente123"></div>
+        <button class="b p" data-ir="inicio" data-snack="Bienvenida, Rosa">Ingresar</button>
+        <button class="b txt" style="width:100%;margin-top:6px">¿Olvidaste tu contraseña?</button>
+        <div style="border-top:1px solid var(--borde);margin:16px 0"></div>
+        <p class="mut cent" style="margin-bottom:10px">¿Tu empresa aún no tiene cuenta?</p>
+        <button class="b o" data-ir="registro">Crear cuenta de empresa</button>
+      </div>`
+  },
+  registro: {
+    grupo: 'Acceso', t: 'Registro con RUC',
+    sub: 'Registro del prospecto. El botón se activa solo cuando todo es válido. Si el RUC ya existe como cliente, la cuenta se vincula a esa empresa (no se duplica).',
+    hu: ['HU-P01'], rf: ['RF-P01', 'RF-P02'], api: [['POST', '/api/portal/registro']], tablas: ['clientes', 'usuarios'],
+    reglas: ['RUC de 11 dígitos que empieza en 10, 15, 17 o 20.', 'Consentimiento obligatorio (Ley 29733 de Protección de Datos Personales).', 'La preferencia de ofertas se guarda en clientes.acepta_ofertas (RN-07).'],
+    html: () => {
+      const v = (ok, val) => val === '' ? '' : (ok ? 'ok' : 'err');
+      return `${barra('Crear cuenta', 'login')}
+      <div class="cuerpo">
+        <p class="mut" style="margin:0 0 12px">Con tu cuenta podrás pedir cotizaciones y soporte desde el celular.</p>
+        <div class="campo ${v(rucValido(E.ruc), E.ruc)}"><label>RUC de la empresa</label>
+          <input inputmode="numeric" maxlength="11" data-campo="ruc" value="${E.ruc}" placeholder="20XXXXXXXXX">
+          <div class="ayu"><span>${E.ruc && !rucValido(E.ruc) ? 'Debe tener 11 dígitos y empezar en 10, 15, 17 o 20' : 'Lo validamos al instante'}</span><span>${E.ruc.length}/11</span></div></div>
+        <div class="campo"><label>Razón social</label><input data-campo="razon" value="${E.razon}" placeholder="Ferretería El Tambo SAC"></div>
+        <div class="campo"><label>Nombre del contacto</label><input data-campo="contacto" value="${E.contacto}" placeholder="Rosa Quispe"></div>
+        <div class="campo ${v(/^9\d{8}$/.test(E.cel), E.cel)}"><label>Celular</label><input inputmode="numeric" maxlength="9" data-campo="cel" value="${E.cel}" placeholder="9XXXXXXXX"></div>
+        <div class="campo ${v(correoValido(E.correo), E.correo)}"><label>Correo</label><input type="email" data-campo="correo" value="${E.correo}" placeholder="nombre@empresa.pe"></div>
+        <div class="campo ${v(E.clave.length >= 8, E.clave)}"><label>Contraseña</label><input type="password" data-campo="clave" value="${E.clave}" placeholder="Mínimo 8 caracteres"></div>
+        <label class="chk"><input type="checkbox" data-campo="consiente" ${E.consiente ? 'checked' : ''}><span>Acepto que CRM Andino use mis datos para fines comerciales, según la <a>Ley 29733</a>. <b>Obligatorio.</b></span></label>
+        <label class="chk"><input type="checkbox" data-campo="ofertas" ${E.ofertas ? 'checked' : ''}><span>Quiero recibir ofertas y promociones (puedo desactivarlo después).</span></label>
+        <button class="b p" style="margin-top:8px" data-ir="inicio" data-snack="Cuenta creada. ¡Bienvenida a CRM Andino!" ${registroValido() ? '' : 'disabled'}>Crear cuenta</button>
+        <button class="b txt" style="width:100%;margin-top:6px" data-llenar>Llenar con datos de ejemplo</button>
+      </div>`;
+    }
+  },
+  inicio: {
+    grupo: 'Inicio', t: 'Inicio',
+    sub: 'Resumen del cliente: lo que debe responder primero (cotización por vencer), accesos rápidos y ofertas. Muestra cuántas operaciones esperan conexión.',
+    hu: ['HU-P02', 'HU-P03', 'HU-P04', 'HU-P05'], rf: ['RF-P04', 'RF-P05', 'RF-P08', 'RF-P10'],
+    api: [['GET', '/api/portal/perfil'], ['GET', '/api/cotizaciones?estado=ENVIADA'], ['GET', '/api/servicio/solicitudes'], ['GET', '/api/portal/ofertas']],
+    tablas: ['cotizaciones', 'solicitudes_servicio', 'campanas'],
+    reglas: ['Room guarda la última copia: el inicio abre aunque no haya internet.', 'El interruptor “Simular sin conexión” muestra el aviso de operaciones pendientes.'],
+    html: () => `${barra('Hola, Rosa', '', campana)}
+      <div class="cuerpo">
+        ${E.offline ? `<div class="banner">${ic('nube', 20)}<span><b>Sin conexión.</b> Tu solicitud se guardó y se enviará sola al volver la señal.</span></div>` : ''}
+        <p class="mut" style="margin:0 0 10px">Ferretería El Tambo SAC · cliente desde 2024</p>
+        ${E.aceptada ? `<div class="card"><span class="tag vd">${ic('check', 14)} ACEPTADA</span><h3 style="margin-top:8px">${COT.numero}</h3><p class="mut">Tu asesor coordinará la instalación.</p></div>` :
+        `<div class="dest"><div class="k">Cotización por responder · vence en ${COT.vence} días</div><div class="v">${soles(COT.total)}</div><div class="k">${COT.numero} · ${COT.vendedor}</div><button class="b" data-ir="cotizacion">Revisar y responder</button></div>`}
+        <div class="grid2">
+          <button class="acc" data-ir="solicitar"><span class="icb" style="background:#d7f1ee;color:#11695f">${ic('doc')}</span><b>Solicitar cotización</b><small>Sin llamar al vendedor</small></button>
+          <button class="acc" data-ir="nueva"><span class="icb" style="background:#fdecd0;color:#8a5a0c">${ic('soporte')}</span><b>Pedir soporte</b><small>Respuesta en horas</small></button>
+        </div>
+        <div class="sec"><span>Mis solicitudes de servicio</span><a data-ir="servicio">Ver todas</a></div>
+        <div class="card" style="padding:4px 14px"><div class="li" data-ir="ticket"><span class="ico">${ic('soporte')}</span><div class="tx"><b>SRV-2026-0388 · Facturación</b><small>En atención · Sofía R.</small></div><span class="tag dr">ALTA</span></div></div>
+        <div class="sec"><span>Ofertas para ti</span><a data-ir="ofertas">Ver 2</a></div>
+        <div class="oferta" data-ir="ofertas" style="cursor:pointer"><div class="top"><span class="tag" style="background:rgba(255,255,255,.2);color:#fff">−15 %</span><b>Módulo Inventario</b></div><div class="bot mut">Controla tu stock desde el celular. Válido hasta el 30/11.</div></div>
+        <label class="chk" style="margin-top:14px;color:var(--txt2)"><input type="checkbox" data-campo="offline" ${E.offline ? 'checked' : ''}><span>Simular sin conexión (prototipo)</span></label>
+      </div>${navInf('inicio')}`
+  },
+  solicitar: {
+    grupo: 'Cotizaciones', t: 'Solicitar cotización',
+    sub: 'El cliente elige productos del catálogo, cantidades y deja un comentario. Al enviar se crea un lead NUEVO con canal PORTAL asignado al vendedor de su zona.',
+    hu: ['HU-P02'], rf: ['RF-P03'], api: [['GET', '/api/productos'], ['POST', '/api/portal/solicitudes-cotizacion']], tablas: ['productos', 'leads (canal PORTAL)'],
+    reglas: ['Al menos un producto con cantidad mayor a 0.', 'Sin internet: se guarda en Room como PENDIENTE y el SyncWorker la envía con el mismo uuid (no se duplica).', 'Los precios son referenciales; el precio final lo pone la cotización.'],
+    html: () => {
+      const total = CATALOGO.reduce((a, p) => a + p.precio * E.cant[p.id], 0);
+      const n = Object.values(E.cant).filter(x => x > 0).length;
+      return `${barra('Solicitar cotización', 'inicio')}
+      <div class="cuerpo">
+        <p class="mut" style="margin:0 0 6px">¿Qué necesita tu empresa?</p>
+        <div class="card" style="padding:2px 14px">
+          ${CATALOGO.map(p => `<div class="prod"><div class="tx"><b>${p.nombre}</b><small>${p.det} · desde ${soles(p.precio)}</small></div>
+            <div class="step"><button data-cant="${p.id}" data-d="-1" aria-label="Menos">${ic('remove', 18)}</button><span>${E.cant[p.id]}</span><button data-cant="${p.id}" data-d="1" aria-label="Más">${ic('add', 18)}</button></div></div>`).join('')}
+        </div>
+        <div class="campo"><label>Comentario (opcional)</label><textarea data-campo="comentario" maxlength="500">${E.comentario}</textarea></div>
+        <p class="mut" style="margin:0 0 10px">${n} producto(s) · referencial ${soles(total)}</p>
+        <button class="b p" data-ir="solicitud_ok" ${n ? '' : 'disabled'}>${ic('enviar', 18)} Enviar solicitud</button>
+      </div>`;
+    }
+  },
+  solicitud_ok: {
+    grupo: 'Cotizaciones', t: 'Solicitud recibida',
+    sub: 'Confirmación con código de seguimiento. El vendedor recibe una notificación con el puntaje del lead calculado por el modelo de ML.',
+    hu: ['HU-P02'], rf: ['RF-P03', 'RF-P04'], api: [['GET', '/api/portal/solicitudes-cotizacion/{codigo}']], tablas: ['leads', 'correlativos'],
+    reglas: ['Código SOL-AAAA-NNNN generado por la base (función siguiente_numero).', 'Estados para el cliente: Recibida → En preparación → Cotizada.'],
+    html: () => `${barra('Solicitud enviada', 'inicio')}
+      <div class="cuerpo cent">
+        <div class="ok-ic">${ic('check')}</div>
+        <p class="h1">${E.offline ? '¡Guardada!' : '¡Recibida!'}</p>
+        <p class="mut">${E.offline ? 'Se enviará sola cuando vuelva la conexión.' : 'Un asesor ya fue asignado y te enviará la cotización.'}</p>
+        <div class="card" style="text-align:left;margin-top:14px">
+          <p class="mut" style="margin:0">Código de seguimiento</p>
+          <div class="codigo">SOL-2026-0412</div>
+          <div class="pasos"><div class="h c">Recibida</div><div>En preparación</div><div>Cotizada</div></div>
+          <div class="kv" style="margin-top:8px"><span>Asesor</span><span>Carlos Mendoza R.</span></div>
+          <div class="kv"><span>Te avisaremos</span><span>por notificación</span></div>
+        </div>
+        <button class="b p" data-ir="cotizaciones">Ver mis solicitudes</button>
+        <button class="b txt" style="width:100%;margin-top:6px" data-ir="inicio">Volver al inicio</button>
+      </div>`
+  },
+  cotizaciones: {
+    grupo: 'Cotizaciones', t: 'Mis cotizaciones',
+    sub: 'Dos pestañas: las solicitudes que el cliente hizo (con su estado) y las cotizaciones formales que recibió.',
+    hu: ['HU-P02', 'HU-P03'], rf: ['RF-P04', 'RF-P05'], api: [['GET', '/api/portal/solicitudes-cotizacion'], ['GET', '/api/cotizaciones']], tablas: ['leads', 'cotizaciones'],
+    reglas: ['El cliente nunca ve borradores ni cotizaciones pendientes de aprobación interna.', 'Se marca en ámbar la que vence en menos de 5 días.'],
+    html: () => `${barra('Cotizaciones', '', campana)}
+      <div class="tabs"><button class="${E.tab === 'cot' ? 'act' : ''}" data-tab="cot">Recibidas</button><button class="${E.tab === 'sol' ? 'act' : ''}" data-tab="sol">Mis solicitudes</button></div>
+      <div class="cuerpo">
+        ${E.tab === 'cot' ? `
+        <div class="card" style="padding:4px 14px">
+          <div class="li" data-ir="cotizacion"><span class="ico">${ic('doc')}</span><div class="tx"><b>${COT.numero}</b><small>${soles(COT.total)} · vence en ${COT.vence} días</small></div>${E.aceptada ? '<span class="tag vd">ACEPTADA</span>' : '<span class="tag dr">PENDIENTE</span>'}</div>
+          <div class="li"><span class="ico">${ic('doc')}</span><div class="tx"><b>COT-2026-0097</b><small>${soles(4400)} · Soporte anual</small></div><span class="tag vd">ACEPTADA</span></div>
+          <div class="li"><span class="ico">${ic('doc')}</span><div class="tx"><b>COT-2026-0051</b><small>${soles(6100)} · Planillas</small></div><span class="tag gr">VENCIDA</span></div>
+        </div>` : `
+        <div class="card" style="padding:4px 14px">
+          <div class="li" data-ir="solicitud_ok"><span class="ico">${ic('reloj')}</span><div class="tx"><b>SOL-2026-0412</b><small>Facturación × 5, Capacitación × 2</small></div><span class="tag az">RECIBIDA</span></div>
+          <div class="li"><span class="ico">${ic('check')}</span><div class="tx"><b>SOL-2026-0388</b><small>Facturación × 5</small></div><span class="tag tq">COTIZADA</span></div>
+        </div>`}
+        <button class="b o" data-ir="solicitar">${ic('add', 18)} Nueva solicitud</button>
+      </div>${navInf('cotizaciones')}`
+  },
+  cotizacion: {
+    grupo: 'Cotizaciones', t: 'Detalle de cotización',
+    sub: 'El cliente revisa productos, descuento y total, y decide. Aceptar pasa el lead a GANADO y crea o reutiliza la cuenta por RUC; el vendedor recibe una notificación.',
+    hu: ['HU-P03'], rf: ['RF-P05', 'RF-P06'], api: [['GET', '/api/cotizaciones/{id}'], ['PUT', '/api/cotizaciones/{id}/respuesta']], tablas: ['cotizaciones', 'cotizacion_detalle', 'leads', 'clientes'],
+    reglas: ['Total = Σ(precio × cantidad) × (1 − descuento), calculado por la base.', 'RN-04: vencida no se acepta (el botón cambia a “Pedir nueva cotización”).', 'Rechazar exige motivo.'],
+    html: () => `${barra(COT.numero, 'cotizaciones')}
+      <div class="cuerpo">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="tag ${E.aceptada ? 'vd' : 'dr'}">${E.aceptada ? 'ACEPTADA' : 'POR RESPONDER'}</span><span class="mut">Vence en ${COT.vence} días</span></div>
+          <p class="mut" style="margin:10px 0 2px">Asesor: ${COT.vendedor}</p>
+          <table class="tabla">${COT.items.map(i => `<tr><td>${i[0]}</td><td>${soles(i[1])}</td></tr>`).join('')}</table>
+          <table class="tabla tot"><tr><td>Subtotal</td><td>${soles(COT.subtotal)}</td></tr><tr><td>Descuento ${COT.desc} %</td><td>− ${soles(COT.subtotal - COT.total)}</td></tr><tr><td>Total</td><td>${soles(COT.total)}</td></tr></table>
+        </div>
+        <p class="mut" style="margin:0 0 12px">Precios en soles, incluyen IGV. Vigencia de 15 días desde el envío.</p>
+        ${E.aceptada ? `<button class="b o" data-ir="inicio">Volver al inicio</button>` :
+        `<button class="b t" data-aceptar>${ic('check', 18)} Aceptar cotización</button>
+         <button class="b r" style="margin-top:10px" data-hoja>Rechazar</button>`}
+      </div>
+      ${E.hoja ? `<div class="hoja"><div class="in">
+        <div class="asa"></div>
+        <p style="font-weight:500;font-size:16px;margin:0 0 4px">¿Por qué la rechazas?</p>
+        <p class="mut" style="margin:0 0 6px">Nos ayuda a mejorar la próxima propuesta.</p>
+        ${[['PRECIO', 'El precio'], ['PLAZO', 'El plazo de entrega'], ['OTRA_EMPRESA', 'Elegimos otra empresa'], ['OTRO', 'Otro motivo']].map(([v, t]) =>
+          `<label class="radio"><input type="radio" name="mot" value="${v}" data-motivo ${E.motivo === v ? 'checked' : ''}>${t}</label>`).join('')}
+        <div class="fila-b"><button class="b o" data-cerrar-hoja>Cancelar</button><button class="b p" data-rechazar ${E.motivo ? '' : 'disabled'}>Rechazar</button></div>
+      </div></div>` : ''}`
+  },
+  aceptada: {
+    grupo: 'Cotizaciones', t: 'Cotización aceptada',
+    sub: 'Confirmación después de aceptar. En el servidor: lead GANADO, cuenta de cliente (RN-05), compra en el historial y notificación al vendedor.',
+    hu: ['HU-P03'], rf: ['RF-P05'], api: [['PUT', '/api/cotizaciones/{id}/respuesta']], tablas: ['cotizaciones', 'leads', 'historial_lead'],
+    reglas: ['La respuesta es idempotente: si se toca dos veces, no se acepta dos veces.'],
+    html: () => `${barra('¡Gracias!', 'inicio')}
+      <div class="cuerpo cent">
+        <div class="ok-ic">${ic('check')}</div>
+        <p class="h1">Cotización aceptada</p>
+        <p class="mut">${COT.numero} · ${soles(COT.total)}</p>
+        <div class="card" style="text-align:left;margin-top:16px">
+          <span class="tag tq">SIGUIENTE PASO</span>
+          <h3 style="margin-top:8px">Instalación programada</h3>
+          <p class="mut">Carlos Mendoza te escribirá hoy para coordinar la fecha. Recibirás una notificación.</p>
+        </div>
+        <button class="b p" data-ir="inicio">Ir al inicio</button>
+      </div>`
+  },
+  servicio: {
+    grupo: 'Servicio', t: 'Mis solicitudes de servicio',
+    sub: 'Lista de tickets de la empresa con su estado y agente. El botón flotante abre una nueva solicitud.',
+    hu: ['HU-P04'], rf: ['RF-P08'], api: [['GET', '/api/servicio/solicitudes']], tablas: ['solicitudes_servicio'],
+    reglas: ['El cliente ve si es “cliente preferente”, pero nunca su puntaje numérico.', 'Estado vacío con mensaje claro (RNF-08).'],
+    html: () => `${barra('Servicio', '', campana)}
+      <div class="cuerpo">
+        <div class="card" style="padding:4px 14px">
+          <div class="li" data-ir="ticket"><span class="ico">${ic('soporte')}</span><div class="tx"><b>SRV-2026-0388 · Facturación</b><small>Hoy 10:12 · Sofía R.</small></div><span class="tag az">EN ATENCIÓN</span></div>
+          <div class="li"><span class="ico">${ic('check')}</span><div class="tx"><b>SRV-2026-0301 · Acceso</b><small>12/10 · Marco P.</small></div><span class="tag gr">CERRADA</span></div>
+        </div>
+        <p class="mut cent" style="margin-top:18px">¿Tienes un problema? Cuéntanos y te atendemos<br>sin que repitas la historia.</p>
+      </div>
+      <button class="fab" data-ir="nueva">${ic('add')} Nueva solicitud</button>
+      ${navInf('servicio')}`
+  },
+  nueva: {
+    grupo: 'Servicio', t: 'Nueva solicitud',
+    sub: 'El cliente describe el problema y puede adjuntar una foto. La API califica al cliente y decide prioridad y agente (proceso de lealtad, Laudon fig. 9.9).',
+    hu: ['HU-P04'], rf: ['RF-P07'], api: [['POST', '/api/servicio/solicitudes'], ['POST', '/api/servicio/solicitudes/{id}/foto']], tablas: ['solicitudes_servicio', 'eventos_solicitud'],
+    reglas: ['Descripción mínima de 20 caracteres (contador en vivo).', 'La cámara se pide solo al tocar “Adjuntar foto” (RNF-07).', 'Puntaje ≥ 70 → prioridad ALTA, SLA 4 h, agente senior (RN-06).'],
+    html: () => {
+      const ok = E.desc.trim().length >= 20;
+      return `${barra('Nueva solicitud', 'servicio')}
+      <div class="cuerpo">
+        <p class="mut" style="margin:0 0 8px">Categoría</p>
+        <div class="cats">${[['FACTURACION', 'Facturación'], ['ACCESO', 'Acceso'], ['ERROR_SISTEMA', 'Error del sistema'], ['CAPACITACION', 'Capacitación'], ['OTRO', 'Otro']]
+          .map(([v, t]) => `<button class="${E.cat === v ? 'on' : ''}" data-cat="${v}">${t}</button>`).join('')}</div>
+        <div class="campo ${E.desc && !ok ? 'err' : ''}"><label>Describe el problema</label><textarea data-campo="desc" maxlength="500">${E.desc}</textarea>
+          <div class="ayu"><span>${ok ? '¡Bien! Con eso el agente entiende el caso' : 'Mínimo 20 caracteres'}</span><span>${E.desc.trim().length}/500</span></div></div>
+        <div class="foto ${E.foto ? 'lista' : ''}" data-foto>${ic('camara')}<span>${E.foto ? '<b>captura_error.jpg</b> · 240 KB · tocar para quitar' : 'Adjuntar foto (opcional)'}</span></div>
+        <div style="height:14px"></div>
+        <button class="b p" data-ir="ticket" data-snack="Solicitud SRV-2026-0388 registrada" ${ok ? '' : 'disabled'}>${ic('enviar', 18)} Enviar solicitud</button>
+      </div>`;
+    }
+  },
+  ticket: {
+    grupo: 'Servicio', t: 'Detalle del ticket',
+    sub: 'Estado, prioridad y agente asignado, con el historial completo. Cuando el agente lo resuelve, el cliente confirma o lo reabre.',
+    hu: ['HU-P04'], rf: ['RF-P08', 'RF-P09'], api: [['GET', '/api/servicio/solicitudes/{id}'], ['PUT', '/api/servicio/solicitudes/{id}/estado']], tablas: ['solicitudes_servicio', 'eventos_solicitud'],
+    reglas: ['Cada cambio de estado llega como notificación push (FCM).', 'Si el cliente no confirma en 48 h, RESUELTA pasa a CERRADA sola.'],
+    html: () => `${barra('SRV-2026-0388', 'servicio')}
+      <div class="cuerpo">
+        <div class="card" style="background:linear-gradient(135deg,#fff7e8,#fff)">
+          <span class="tag dr">CLIENTE PREFERENTE · PRIORIDAD ALTA</span>
+          <h3 style="margin-top:8px">Te atenderemos en menos de 4 horas</h3>
+          <p class="mut" style="margin:0">Agente asignada: <b style="color:var(--txt)">Sofía R.</b> (senior)</p>
+        </div>
+        <div class="card">
+          <div class="pasos"><div class="h">Abierta</div><div class="h">En atención</div><div class="h c">Resuelta</div><div>Cerrada</div></div>
+        </div>
+        <div class="card">
+          <h3>Facturación</h3>
+          <p class="mut" style="margin:0 0 10px">${E.desc}</p>
+          <ul class="tl">
+            <li>Resuelta: certificado digital renovado<small>Hoy 11:24 · Sofía R.</small></li>
+            <li>En atención<small>Hoy 10:31 · Sofía R. tomó el caso</small></li>
+            <li>Abierta · prioridad alta<small>Hoy 10:12 · con foto adjunta</small></li>
+          </ul>
+        </div>
+        <p class="mut" style="margin:0 0 8px">¿Quedó solucionado?</p>
+        <div class="fila-b" style="margin-top:0"><button class="b o" data-snack="Reabrimos tu caso; Sofía ya fue avisada">Sigue el problema</button><button class="b t" data-ir="calificar">Sí, cerrar</button></div>
+      </div>`
+  },
+  calificar: {
+    grupo: 'Servicio', t: 'Calificar la atención',
+    sub: 'Al cerrar el ticket se pide una calificación de 1 a 5 (una sola vez). Luego se muestra una oferta especial de venta cruzada (“proveer ofertas especiales”, Laudon fig. 9.9).',
+    hu: ['HU-P06'], rf: ['RF-P12'], api: [['POST', '/api/servicio/solicitudes/{id}/calificacion'], ['POST', '/api/campanas/{id}/respuesta']], tablas: ['solicitudes_servicio', 'recomendaciones'],
+    reglas: ['La calificación alimenta el puntaje de lealtad del cliente.', 'La base rechaza una segunda calificación del mismo ticket.'],
+    html: () => `${barra('Califica la atención', 'ticket')}
+      <div class="cuerpo">
+        <div class="card cent">
+          <p class="mut" style="margin:0">¿Cómo te atendió Sofía R.?</p>
+          <div class="estrellas">${[1, 2, 3, 4, 5].map(n => `<button data-estrella="${n}" class="${n <= E.estrellas ? 'on' : ''}" aria-label="${n} estrellas"><svg viewBox="0 0 24 24"><path d="${IC.star}"/></svg></button>`).join('')}</div>
+          <p style="font-weight:500;margin:0 0 10px">${['', 'Muy mala', 'Mala', 'Regular', 'Buena', '¡Excelente!'][E.estrellas]}</p>
+          <div class="campo" style="text-align:left"><label>Comentario (opcional)</label><textarea style="height:70px">Rápido y sin repetir el problema</textarea></div>
+          <button class="b p" data-snack="¡Gracias por tu calificación!">Enviar calificación</button>
+        </div>
+        <div class="sec"><span>Oferta especial para ti</span></div>
+        <div class="oferta"><div class="top"><span class="tag" style="background:rgba(255,255,255,.2);color:#fff">CLIENTE PREFERENTE</span><b>Módulo Inventario · −15 %</b></div>
+          <div class="bot"><p class="mut" style="margin:0 0 10px">Clientes con Facturación también usan Inventario.</p><button class="b t" data-interes="0" style="height:38px">${E.interes[0] ? ic('check', 18) + ' ¡Listo! Te contactarán' : 'Me interesa'}</button></div></div>
+      </div>`
+  },
+  ofertas: {
+    grupo: 'Ofertas y perfil', t: 'Ofertas',
+    sub: 'Ofertas vigentes de las campañas del supervisor. “Me interesa” crea un lead con canal CAMPANA y avisa al vendedor; así se mide la respuesta por canal (Laudon fig. 9.7).',
+    hu: ['HU-P05'], rf: ['RF-P10', 'RF-P11'], api: [['GET', '/api/portal/ofertas'], ['POST', '/api/campanas/{id}/respuesta']], tablas: ['campanas', 'respuestas_campana', 'leads (canal CAMPANA)'],
+    reglas: ['Un toque, sin formularios.', 'Enlace directo para desactivar las ofertas (RN-07).'],
+    html: () => `${barra('Ofertas para ti', 'inicio')}
+      <div class="cuerpo">
+        ${[['Módulo Inventario', '−15 %', 'Controla tu stock desde el celular. Integrado con tu Facturación.', '30/11', ''], ['Soporte anual prioritario', '2 meses gratis', 'Atención en 4 horas y visitas preventivas.', '15/12', 'az']]
+          .map(([t, d, x, f, c], i) => `<div class="oferta"><div class="top ${c}"><span class="tag" style="background:rgba(255,255,255,.2);color:#fff">${d}</span><b>${t}</b></div>
+          <div class="bot"><p class="mut" style="margin:0 0 4px">${x}</p><p class="mut" style="margin:0 0 10px;font-size:12px">Válido hasta el ${f}</p>
+          <button class="b ${E.interes[i] ? 'o' : 't'}" data-interes="${i}" style="height:38px">${E.interes[i] ? ic('check', 18) + ' Tu asesor te contactará' : 'Me interesa'}</button></div></div>`).join('')}
+        <button class="b txt" style="width:100%" data-ir="perfil">No quiero recibir ofertas</button>
+      </div>`
+  },
+  notificaciones: {
+    grupo: 'Ofertas y perfil', t: 'Notificaciones',
+    sub: 'Bandeja de las notificaciones push recibidas (cotizaciones, tickets y ofertas). Tocar una abre la pantalla correspondiente.',
+    hu: ['HU-P03', 'HU-P04', 'HU-P05'], rf: ['RF-P09'], api: [['PUT', '/api/dispositivos']], tablas: ['dispositivos'],
+    reglas: ['El token FCM se registra al iniciar sesión y se renueva si cambia.', 'Android 13+: el permiso de notificaciones se pide con una explicación previa.'],
+    html: () => `${barra('Notificaciones', 'inicio')}
+      <div class="cuerpo">
+        <div class="card" style="padding:4px 14px">
+          <div class="li" data-ir="cotizacion"><span class="ico">${ic('doc')}</span><div class="tx"><b>Recibiste una cotización</b><small>${COT.numero} · ${soles(COT.total)} · hace 2 h</small></div>${ic('chev')}</div>
+          <div class="li" data-ir="ticket"><span class="ico" style="background:#d7f1ee;color:#11695f">${ic('soporte')}</span><div class="tx"><b>Tu solicitud fue resuelta</b><small>SRV-2026-0388 · Sofía R. · hace 3 h</small></div>${ic('chev')}</div>
+          <div class="li" data-ir="ofertas"><span class="ico" style="background:#fdecd0;color:#8a5a0c">${ic('oferta')}</span><div class="tx"><b>Oferta para ti</b><small>Módulo Inventario · −15 % · ayer</small></div>${ic('chev')}</div>
+        </div>
+      </div>`
+  },
+  perfil: {
+    grupo: 'Ofertas y perfil', t: 'Perfil',
+    sub: 'Datos de la empresa, asesor asignado y preferencia de ofertas. Desactivarlas saca al cliente de toda campaña futura.',
+    hu: ['HU-P01', 'HU-P05'], rf: ['RF-P11'], api: [['GET', '/api/portal/perfil'], ['PUT', '/api/portal/perfil']], tablas: ['usuarios', 'clientes'],
+    reglas: ['RN-07: con ofertas desactivadas el cliente no entra en ningún segmento.', 'Cerrar sesión borra el token y los datos locales de Room.'],
+    html: () => `${barra('Perfil', '', campana)}
+      <div class="cuerpo">
+        <div class="card cent"><div style="width:64px;height:64px;border-radius:50%;background:var(--nieve);color:var(--azul);display:grid;place-items:center;margin:4px auto 8px;font-size:24px;font-weight:700">RQ</div>
+          <h3>Rosa Quispe</h3><p class="mut" style="margin:0">rosa@ferreteriaeltambo.pe · 964 123 456</p></div>
+        <div class="card">
+          <div class="kv"><span>Empresa</span><span>Ferretería El Tambo SAC</span></div>
+          <div class="kv"><span>RUC</span><span>20612345671</span></div>
+          <div class="kv"><span>Cliente desde</span><span>2024</span></div>
+          <div class="kv"><span>Tu asesor</span><span>Carlos Mendoza R.</span></div>
+        </div>
+        <div class="card" style="display:flex;gap:12px;align-items:center">
+          <div style="flex:1"><b style="font-weight:500">Recibir ofertas</b><p class="mut" style="margin:2px 0 0">${E.ofertas ? 'Te enviaremos promociones relevantes.' : 'No recibirás campañas.'}</p></div>
+          <button class="sw ${E.ofertas ? 'on' : ''}" data-switch aria-label="Recibir ofertas" aria-pressed="${E.ofertas}"></button>
+        </div>
+        <button class="b r" data-ir="login">${ic('salir', 18)} Cerrar sesión</button>
+      </div>${navInf('perfil')}`
+  }
+};
+
+const ORDEN = ['login', 'registro', 'inicio', 'solicitar', 'solicitud_ok', 'cotizaciones', 'cotizacion', 'aceptada', 'servicio', 'nueva', 'ticket', 'calificar', 'ofertas', 'notificaciones', 'perfil'];
+
+/* ===================== Render ===================== */
+let actual = 'login';
+const params = new URLSearchParams(location.search);
+if (params.get('p') && P[params.get('p')]) actual = params.get('p');
+if (params.has('solo')) document.body.classList.add('solo');
+if (params.get('hoja')) E.hoja = true;
+
+function telefono(id) {
+  return `<div class="tel"><div class="pant" data-pant="${id}">${P[id].html()}${E.snack && id === actual ? `<div class="snack">${E.snack}</div>` : ''}</div></div>`;
+}
+
+function pintar() {
+  document.getElementById('telefono').innerHTML = telefono(actual);
+  const p = P[actual];
+  const n = ORDEN.indexOf(actual) + 1;
+  document.getElementById('nota').innerHTML = `
+    <p class="mut" style="margin:0 0 4px;font-size:12px;color:var(--pag-txt2)">Pantalla ${n} de ${ORDEN.length} · ${p.grupo}</p>
+    <h3>${p.t}</h3><p class="sub">${p.sub}</p>
+    <h4>Historias de usuario</h4><div class="chips">${p.hu.map(x => `<span class="chip-n">${x}</span>`).join('')}</div>
+    <h4>Requisitos</h4><div class="chips">${p.rf.map(x => `<span class="chip-n t">${x}</span>`).join('')}</div>
+    <h4>Endpoints (contrato de API)</h4><ul class="api">${p.api.map(([m, u]) => `<li><b>${m}</b>${u}</li>`).join('')}</ul>
+    <h4>Tablas</h4><div class="chips">${p.tablas.map(x => `<span class="chip-n d">${x}</span>`).join('')}</div>
+    <h4>Reglas y detalles</h4><ul class="reg">${p.reglas.map(x => `<li>${x}</li>`).join('')}</ul>`;
+  document.querySelectorAll('#mapa button').forEach(b => b.setAttribute('aria-current', b.dataset.p === actual));
+}
+
+function mapa() {
+  let g = '', h = '';
+  ORDEN.forEach((id, i) => {
+    if (P[id].grupo !== g) { g = P[id].grupo; h += `<h2>${g}</h2>`; }
+    h += `<button data-p="${id}"><span class="n">${String(i + 1).padStart(2, '0')}</span>${P[id].t}</button>`;
+  });
+  document.getElementById('mapa').innerHTML = h;
+}
+
+function todas() {
+  document.getElementById('todas').innerHTML = ORDEN.map((id, i) =>
+    `<figure>${telefono(id)}<figcaption>${String(i + 1).padStart(2, '0')} · ${P[id].t}</figcaption></figure>`).join('');
+}
+
+function ir(id, snack = '') {
+  actual = id; E.snack = snack; E.hoja = false;
+  pintar();
+  const c = document.querySelector('#telefono .cuerpo'); if (c) c.scrollTop = 0;
+  if (snack) setTimeout(() => { if (E.snack === snack) { E.snack = ''; const s = document.querySelector('#telefono .snack'); if (s) s.remove(); } }, 2600);
+}
+
+/* ===================== Interacción ===================== */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, [data-ir], [data-foto]');
+  if (!t) return;
+  if (t.dataset.p) return ir(t.dataset.p);
+  if (t.closest('.todas')) return;
+  if (t.hasAttribute('data-llenar')) { Object.assign(E, { ruc: '20612345671', razon: 'Ferretería El Tambo SAC', contacto: 'Rosa Quispe', cel: '964123456', correo: 'rosa@ferreteriaeltambo.pe', clave: 'cliente123', consiente: true }); return pintar(); }
+  if (t.dataset.cant) { const id = t.dataset.cant; E.cant[id] = Math.max(0, Math.min(50, E.cant[id] + Number(t.dataset.d))); return pintar(); }
+  if (t.dataset.tab) { E.tab = t.dataset.tab; return pintar(); }
+  if (t.dataset.cat) { E.cat = t.dataset.cat; return pintar(); }
+  if (t.dataset.estrella) { E.estrellas = Number(t.dataset.estrella); return pintar(); }
+  if (t.dataset.interes !== undefined) { E.interes[t.dataset.interes] = true; return pintar(); }
+  if (t.hasAttribute('data-foto')) { E.foto = !E.foto; return pintar(); }
+  if (t.hasAttribute('data-switch')) { E.ofertas = !E.ofertas; return pintar(); }
+  if (t.hasAttribute('data-hoja')) { E.hoja = true; return pintar(); }
+  if (t.hasAttribute('data-cerrar-hoja')) { E.hoja = false; E.motivo = ''; return pintar(); }
+  if (t.hasAttribute('data-aceptar')) { E.aceptada = true; return ir('aceptada'); }
+  if (t.hasAttribute('data-rechazar')) { E.hoja = false; return ir('cotizaciones', 'Cotización rechazada. Tu asesor recibirá el motivo.'); }
+  if (t.dataset.ir) { if (t.disabled) return; return ir(t.dataset.ir, t.dataset.snack || ''); }
+  if (t.dataset.snack) { E.snack = t.dataset.snack; pintar(); setTimeout(() => { E.snack = ''; pintar(); }, 2400); }
+});
+
+document.addEventListener('input', e => {
+  const c = e.target.dataset.campo;
+  if (!c) return;
+  if (e.target.type === 'checkbox') { E[c] = e.target.checked; return pintar(); }
+  let v = e.target.value;
+  if (c === 'ruc' || c === 'cel') v = v.replace(/\D/g, '');
+  E[c] = v;
+  if (['ruc', 'cel', 'correo', 'clave', 'razon', 'contacto', 'desc'].includes(c)) {
+    const pos = e.target.selectionStart;
+    pintar();
+    const el = document.querySelector(`#telefono [data-campo="${c}"]`);
+    if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (_) {} }
+  }
+});
+document.addEventListener('change', e => { if (e.target.dataset.motivo !== undefined) { E.motivo = e.target.value; pintar(); } });
+
+document.getElementById('btnTodas').onclick = () => { todas(); document.body.classList.add('modo-todas'); btnTodas.setAttribute('aria-pressed', true); btnUna.setAttribute('aria-pressed', false); };
+document.getElementById('btnUna').onclick = () => { document.body.classList.remove('modo-todas'); btnUna.setAttribute('aria-pressed', true); btnTodas.setAttribute('aria-pressed', false); };
+
+mapa(); pintar();
+</script>
+</body>
+</html>

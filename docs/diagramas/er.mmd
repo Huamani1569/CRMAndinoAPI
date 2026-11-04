@@ -1,0 +1,165 @@
+---
+config:
+  layout: elk
+  theme: base
+  themeVariables:
+    primaryColor: "#E8EEF5"
+    primaryBorderColor: "#1F3A5F"
+    primaryTextColor: "#1C2430"
+    lineColor: "#5B6675"
+    fontFamily: "Inter, Arial, sans-serif"
+---
+erDiagram
+    usuarios ||--o{ leads : "vendedor"
+    usuarios }o--o| clientes : "cliente del Portal"
+    clientes ||--o{ leads : "compras y oportunidades"
+    leads ||--o{ interacciones : tiene
+    leads ||--o{ tareas : tiene
+    leads ||--o{ historial_lead : "trazabilidad"
+    leads ||--o{ visitas : "check-in"
+    leads ||--o{ cotizaciones : recibe
+    cotizaciones ||--|{ cotizacion_detalle : contiene
+    productos ||--o{ cotizacion_detalle : "se cotiza"
+    clientes ||--o{ solicitudes_servicio : abre
+    usuarios ||--o{ solicitudes_servicio : "agente asignado"
+    solicitudes_servicio ||--o{ eventos_solicitud : "historial"
+    campanas ||--o{ respuestas_campana : "envíos"
+    clientes ||--o{ respuestas_campana : recibe
+    campanas |o--o{ leads : "origina"
+    clientes ||--o{ recomendaciones : "ML-04"
+    productos ||--o{ recomendaciones : sugiere
+    usuarios ||--o{ dispositivos : "token push"
+
+    usuarios {
+        int id PK
+        varchar correo UK
+        varchar rol "vendedor|supervisor|agente|cliente"
+        varchar territorio "NUEVO"
+        bool es_senior "NUEVO"
+        int cliente_id FK "NUEVO"
+    }
+    clientes {
+        int id PK "TABLA NUEVA"
+        char ruc UK "11 dígitos"
+        varchar razon_social
+        int vendedor_id FK
+        smallint puntaje_valor "0-100"
+        numeric prob_cancelacion "ML-02"
+        numeric cltv
+        bool acepta_ofertas "RN-07"
+    }
+    leads {
+        int id PK
+        uuid uuid UK
+        varchar empresa
+        varchar etapa "NUEVO..GANADO|PERDIDO"
+        varchar canal_origen "NUEVO: VENDEDOR|PORTAL|CAMPANA"
+        varchar codigo_seguimiento "NUEVO: SOL-AAAA-NNNN"
+        smallint puntaje "NUEVO: ML-01"
+        int vendedor_id FK
+        int cliente_id FK "NUEVO"
+        int campana_id FK "NUEVO"
+        int version
+    }
+    interacciones {
+        int id PK
+        uuid uuid UK
+        int lead_id FK
+        varchar tipo "+WhatsApp, Visita"
+        timestamptz fecha_hora "NUEVO"
+        varchar resultado "NUEVO"
+    }
+    tareas {
+        int id PK
+        uuid uuid UK
+        int lead_id FK
+        date fecha_limite
+        varchar tipo "NUEVO: SEGUIMIENTO|RETENCION"
+        int asignada_a FK "NUEVO"
+    }
+    historial_lead {
+        bigint id PK "TABLA NUEVA"
+        int lead_id FK
+        varchar campo "ETAPA|VENDEDOR|PUNTAJE"
+        varchar valor_anterior
+        varchar valor_nuevo
+    }
+    productos {
+        int id PK "TABLA NUEVA"
+        varchar codigo UK
+        varchar nombre
+        numeric precio
+        numeric margen_pct
+    }
+    cotizaciones {
+        int id PK "TABLA NUEVA"
+        uuid uuid UK
+        varchar numero UK "COT-AAAA-NNNN"
+        int lead_id FK
+        numeric descuento_pct "mayor a 10 requiere aprobación"
+        numeric total
+        varchar estado
+        date vigencia_hasta "15 días"
+        varchar motivo_rechazo
+    }
+    cotizacion_detalle {
+        int id PK "TABLA NUEVA"
+        int cotizacion_id FK
+        int producto_id FK
+        int cantidad
+        numeric precio_unit
+    }
+    visitas {
+        int id PK "TABLA NUEVA"
+        uuid uuid UK
+        int lead_id FK
+        date fecha_programada
+        timestamptz checkin_en
+        numeric latitud
+        numeric longitud
+        numeric distancia_m "más de 300 m pide motivo"
+    }
+    solicitudes_servicio {
+        int id PK "TABLA NUEVA"
+        varchar numero UK "SRV-AAAA-NNNN"
+        int cliente_id FK
+        varchar categoria
+        varchar prioridad "ALTA si puntaje >= 70"
+        int agente_id FK
+        varchar estado
+        timestamptz sla_hasta "4 h / 24 h"
+        smallint calificacion "1-5"
+    }
+    eventos_solicitud {
+        bigint id PK "TABLA NUEVA"
+        int solicitud_id FK
+        varchar estado_anterior
+        varchar estado_nuevo
+    }
+    campanas {
+        int id PK "TABLA NUEVA"
+        varchar nombre
+        jsonb segmento
+        varchar canales "PUSH, WHATSAPP, CORREO..."
+        date inicio
+        date fin
+    }
+    respuestas_campana {
+        int id PK "TABLA NUEVA"
+        int campana_id FK
+        int cliente_id FK
+        varchar canal
+        bool respondio
+        int lead_id FK
+    }
+    recomendaciones {
+        int cliente_id PK "TABLA NUEVA"
+        int producto_id PK
+        numeric confianza
+        varchar razon
+    }
+    dispositivos {
+        varchar token_fcm PK "TABLA NUEVA"
+        int usuario_id FK
+        varchar app
+    }

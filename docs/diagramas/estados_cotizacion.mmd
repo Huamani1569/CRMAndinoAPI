@@ -1,0 +1,13 @@
+stateDiagram-v2
+    direction LR
+    [*] --> BORRADOR
+    BORRADOR --> ENVIADA: descuento ≤ 10 %
+    BORRADOR --> PEND_APROBACION: descuento > 10 %
+    PEND_APROBACION --> ENVIADA: supervisor aprueba
+    PEND_APROBACION --> BORRADOR: supervisor observa
+    ENVIADA --> ACEPTADA: cliente acepta (vigente)
+    ENVIADA --> RECHAZADA: cliente rechaza con motivo
+    ENVIADA --> VENCIDA: pasan 15 días
+    ACEPTADA --> [*]
+    RECHAZADA --> [*]
+    VENCIDA --> [*]

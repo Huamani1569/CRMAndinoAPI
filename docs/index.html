@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRM Andino · Diseño Semana 11</title>
+<meta name="description" content="Proyecto Final CRM Andino Perú — entrega de diseño de la Semana 11: modelo de datos ampliado, contrato de API y prototipo del Portal del Cliente.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Ccircle cx='54' cy='54' r='54' fill='%231F3A5F'/%3E%3Cpath fill='%231B998B' d='M20 82 L46 39 L73 82Z'/%3E%3Cpath fill='%23E8EEF5' d='M42 82 L66 51 L90 82Z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--azul:#1F3A5F;--turq:#1B998B;--dorado:#F2A93B;--bg:#F5F7FA;--card:#fff;--txt:#1C2430;--txt2:#5B6675;--borde:#D6DEE8;--chip:#E8EEF5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1724;--card:#172234;--txt:#E8EEF5;--txt2:#A3B1C2;--borde:#26354B;--chip:#1E2C42}}
+:root[data-theme="dark"]{--bg:#0F1724;--card:#172234;--txt:#E8EEF5;--txt2:#A3B1C2;--borde:#26354B;--chip:#1E2C42}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:Roboto,system-ui,"Segoe UI",Arial,sans-serif;line-height:1.5}
+.hero{background:linear-gradient(135deg,#142842,#1F3A5F 60%,#24507e);color:#fff;padding:48px 16px 56px}
+.w{max-width:1040px;margin:0 auto}
+.hero .top{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.hero svg{width:52px;height:52px;flex:none}
+.hero small{display:block;opacity:.8;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.hero h1{font-size:clamp(28px,5vw,40px);margin:0 0 10px;letter-spacing:-.02em;line-height:1.15}
+.hero p{margin:0;max-width:680px;opacity:.9;font-size:16px}
+.datos{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:22px;font-size:13px;opacity:.9}
+.datos b{color:var(--dorado);font-weight:500}
+main{padding:0 16px 56px}
+.tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px;margin-top:-28px}
+.t{background:var(--card);border:1px solid var(--borde);border-radius:18px;padding:22px;display:flex;flex-direction:column;text-decoration:none;color:inherit;transition:transform .15s,box-shadow .15s}
+a.t:hover{transform:translateY(-2px);box-shadow:0 12px 28px -14px rgba(15,23,36,.35)}
+.t .n{font:500 12px "Roboto Mono",monospace;color:var(--turq);margin-bottom:8px}
+.t h2{margin:0 0 6px;font-size:19px}
+.t p{margin:0 0 14px;color:var(--txt2);font-size:14px}
+.t ul{margin:0 0 16px;padding-left:18px;color:var(--txt2);font-size:13.5px}
+.t .ir{margin-top:auto;font-weight:500;color:var(--azul)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .t .ir{color:#8fb8e8}}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--txt2);margin:40px 0 12px}
+.arch{background:var(--card);border:1px solid var(--borde);border-radius:18px;padding:8px 20px}
+.f{display:flex;gap:14px;align-items:baseline;padding:12px 0;border-bottom:1px solid var(--borde);flex-wrap:wrap}
+.f:last-child{border:0}
+.f code{font:500 13px "Roboto Mono",monospace;background:var(--chip);padding:3px 8px;border-radius:6px;white-space:nowrap}
+.f span{color:var(--txt2);font-size:14px;flex:1;min-width:220px}
+.f a{color:var(--turq);font-size:14px;font-weight:500;text-decoration:none}
+.er{background:#fff;border:1px solid var(--borde);border-radius:18px;padding:12px;overflow:auto}
+.er img{display:block;width:100%;min-width:760px;height:auto}
+footer{text-align:center;color:var(--txt2);font-size:13px;padding:0 16px 40px}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="w">
+    <div class="top">
+      <svg viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="54" fill="#fff" fill-opacity=".1"/><g transform="translate(54 54) scale(1.2) translate(-54 -54)"><path fill="#1B998B" d="M26,76 L48,40 L70,76 Z"/><path fill="#E8EEF5" d="M44,76 L64,50 L84,76 Z"/><path fill="none" stroke="#F2A93B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M28,66 L44,58 L56,64 L74,44"/><path fill="#F2A93B" d="M81,36 L68,41 L77,50 Z"/></g></svg>
+      <div><small>Proyecto Final · Caso 07</small><strong>CRM Andino Perú</strong></div>
+    </div>
+    <h1>Entrega de diseño — Semana 11</h1>
+    <p>Modelo de datos ampliado, contrato de la API y prototipo de las pantallas del Portal del Cliente. Todo parte del parcial de la Semana 8, sin romperlo.</p>
+    <div class="datos"><span><b>Alumno</b> Jean Piero Huamani Rodriguez</span><span><b>Curso</b> Desarrollo de Aplicaciones Móviles</span><span><b>Docente</b> Guillermo Peña</span></div>
+  </div>
+</header>
+<main class="w">
+  <div class="tarjetas">
+    <a class="t" href="prototipo-portal/">
+      <span class="n">01 · PROTOTIPO</span><h2>Portal del Cliente</h2>
+      <p>15 pantallas navegables con el flujo completo del cliente.</p>
+      <ul><li>Registro con RUC y consentimiento</li><li>Solicitar, aceptar o rechazar cotizaciones</li><li>Soporte con prioridad por valor del cliente</li><li>Ofertas, notificaciones y perfil</li></ul>
+      <span class="ir">Abrir el prototipo →</span>
+    </a>
+    <a class="t" href="api/">
+      <span class="n">02 · CONTRATO DE API</span><h2>OpenAPI 3.0</h2>
+      <p>49 operaciones en 39 rutas, validadas sin errores.</p>
+      <ul><li>JWT con 4 roles validados en el servidor</li><li>Idempotencia con X-Operacion-UUID</li><li>Errores y conflictos de versión documentados</li><li>Ejemplos de petición y respuesta</li></ul>
+      <span class="ir">Ver la documentación →</span>
+    </a>
+    <a class="t" href="#modelo">
+      <span class="n">03 · MODELO DE DATOS</span><h2>PostgreSQL ampliado</h2>
+      <p>18 tablas: 6 del parcial ampliadas y 12 nuevas.</p>
+      <ul><li>Migración en una sola transacción</li><li>Reglas de negocio en la base (triggers y CHECK)</li><li>Historial automático de leads y tickets</li><li>28 pruebas que pasan</li></ul>
+      <span class="ir">Ver el diagrama →</span>
+    </a>
+  </div>
+
+  <h3 id="modelo">Diagrama entidad-relación</h3>
+  <div class="er"><img src="diagramas/er.svg" alt="Diagrama entidad-relación del CRM Andino con 18 tablas" loading="lazy"></div>
+
+  <h3>Archivos del repositorio</h3>
+  <div class="arch">
+    <div class="f"><code>db/migraciones/001_proyecto_final.sql</code><span>Migración del modelo: columnas nuevas, tablas nuevas, reglas y vistas.</span><a href="https://github.com/Huamani1569/CRMAndinoAPI/blob/main/db/migraciones/001_proyecto_final.sql">Ver</a></div>
+    <div class="f"><code>db/migraciones/002_datos_proyecto_final.sql</code><span>Datos de prueba ficticios: catálogo, clientes, agentes y cuenta del Portal.</span><a href="https://github.com/Huamani1569/CRMAndinoAPI/blob/main/db/migraciones/002_datos_proyecto_final.sql">Ver</a></div>
+    <div class="f"><code>db/pruebas/pruebas_modelo.sql</code><span>Recorre los flujos F1 a F4 y comprueba que la base rechace lo prohibido.</span><a href="https://github.com/Huamani1569/CRMAndinoAPI/blob/main/db/pruebas/pruebas_modelo.sql">Ver</a></div>
+    <div class="f"><code>docs/api/openapi.yaml</code><span>Contrato de la API en formato OpenAPI 3.0.3.</span><a href="https://github.com/Huamani1569/CRMAndinoAPI/blob/main/docs/api/openapi.yaml">Ver</a></div>
+    <div class="f"><code>docs/evidencias/pruebas_modelo.txt</code><span>Resultado de las 28 pruebas del modelo.</span><a href="evidencias/pruebas_modelo.txt">Ver</a></div>
+  </div>
+</main>
+<footer>Caso académico con datos ficticios · CRM Andino Perú · Universidad Continental</footer>
+</body>
+</html>

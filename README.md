@@ -59,3 +59,28 @@ src/operaciones.js   idempotencia (X-Operacion-UUID)
 src/middleware/      auth (JWT, roles) y falla simulada
 src/routes/          auth, leads, interacciones, tareas, usuarios, dev
 ```
+
+---
+
+## Proyecto Final · Semana 11 — Diseño
+La API se amplía para tres apps: **Vendedor**, **Portal del Cliente** (nueva) y **Supervisor**. Lo del parcial se mantiene.
+
+| Entregable | Archivo |
+|---|---|
+| Modelo de datos ampliado (migración) | [`db/migraciones/001_proyecto_final.sql`](db/migraciones/001_proyecto_final.sql) |
+| Datos de prueba de las tablas nuevas | [`db/migraciones/002_datos_proyecto_final.sql`](db/migraciones/002_datos_proyecto_final.sql) |
+| Pruebas de las reglas en la base (28) | [`db/pruebas/pruebas_modelo.sql`](db/pruebas/pruebas_modelo.sql) · [resultado](docs/evidencias/pruebas_modelo.txt) |
+| Diagrama entidad-relación y de estados | [`docs/diagramas/`](docs/diagramas) |
+| Contrato de API (OpenAPI 3.0) | [`docs/api/openapi.yaml`](docs/api/openapi.yaml) · [`docs/api/index.html`](docs/api/index.html) |
+| Prototipo navegable del Portal | [`docs/prototipo-portal/index.html`](docs/prototipo-portal/index.html) |
+
+Aplicar el modelo sobre la base del parcial (en orden):
+```bash
+psql "$DATABASE_URL" -f db/schema.sql      # parcial (si la base está vacía)
+psql "$DATABASE_URL" -f db/seed.sql        # datos del parcial
+psql "$DATABASE_URL" -f db/migraciones/001_proyecto_final.sql
+psql "$DATABASE_URL" -f db/migraciones/002_datos_proyecto_final.sql
+psql "$DATABASE_URL" -f db/pruebas/pruebas_modelo.sql   # no deja datos (ROLLBACK)
+```
+Roles nuevos: `vendedor`, `supervisor`, `agente` y `cliente` (los del parcial se renombran solos: `cliente` → `vendedor`, `administrador` → `supervisor`).
+Cuentas nuevas de prueba: `sofia@crmandino.pe` / `agente123` (agente senior) y `rosa@ferreteriaeltambo.pe` / `cliente123` (Portal).

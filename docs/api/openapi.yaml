@@ -1,0 +1,1852 @@
+openapi: 3.0.3
+info:
+  title: API CRM Andino Perú — Proyecto Final
+  version: 2.0.0-diseno
+  description: |
+    Contrato de la API REST que comparten las tres apps del Proyecto Final
+    (**Vendedor**, **Portal del Cliente** y **Supervisor**). Amplía la API del parcial
+    (Semana 8, versión 1.0.0) sin romperla: los endpoints del parcial se mantienen.
+
+    ## Convenciones
+    - **Autenticación:** `Authorization: Bearer <token JWT>` en todas las rutas, salvo
+      `/api/salud`, `/api/auth/login` y `/api/portal/registro`. El token lleva `id`, `nombre` y `rol`.
+    - **Roles:** `vendedor`, `supervisor`, `agente` (servicio al cliente) y `cliente` (Portal).
+      El rol se valida **en el servidor**; la app solo oculta lo que el rol no puede usar.
+    - **Idempotencia:** toda escritura (`POST`, `PUT`, `DELETE`) envía la cabecera
+      `X-Operacion-UUID`. Si la misma operación llega dos veces (reintento del SyncWorker),
+      la API devuelve la respuesta guardada con `X-Operacion-Duplicada: true` y no repite nada.
+    - **Concurrencia:** las entidades editables traen `version`. La app envía la versión que
+      tenía; si no coincide, la API responde `409 CONFLICTO_VERSION` con el dato actual.
+    - **Errores:** siempre `{"error": "CODIGO", "mensaje": "texto para el usuario"}`.
+    - **Fechas:** ISO-8601 (`2026-11-04`, `2026-11-04T15:30:00Z`). **Montos:** soles, 2 decimales.
+    - **Listas:** `{"servidorTiempo": "...", "total": n, "datos": [...]}`; un objeto: `{"dato": {...}}`.
+
+    Caso académico: empresas, clientes y montos son ficticios.
+  contact:
+    name: Jean Piero Huamani Rodriguez · Desarrollo de Aplicaciones Móviles
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:3000
+    description: Desarrollo local (npm start)
+  - url: https://crm-andino-api.onrender.com
+    description: Despliegue en Render (Semana 12)
+security:
+  - jwt: []
+tags:
+  - name: Sistema
+    description: Disponibilidad del servicio
+  - name: Autenticación
+    description: Inicio de sesión y registro del token push
+  - name: Portal
+    description: Autoservicio del cliente (app nueva)
+  - name: Catálogo
+    description: Productos y servicios que se cotizan
+  - name: Leads
+    description: Cartera y embudo (Vendedor y Supervisor)
+  - name: Interacciones y tareas
+    description: Contactos con el lead y recordatorios
+  - name: Visitas
+    description: Ruta del día y check-in con GPS
+  - name: Cotizaciones
+    description: Del borrador a la respuesta del cliente
+  - name: Servicio
+    description: Solicitudes de servicio y proceso de lealtad (Laudon, fig. 9.9)
+  - name: Campañas
+    description: Marketing y respuesta por canal (Laudon, fig. 9.7)
+  - name: Clientes
+    description: Ficha del cliente y venta cruzada
+  - name: Analítica
+    description: CRM analítica para la App Supervisor
+  - name: Sincronización
+    description: Cambios para las apps offline-first
+
+paths:
+  # ------------------------------------------------------------------ Sistema
+  /api/salud:
+    get:
+      tags: [Sistema]
+      summary: Estado del servidor y de la base de datos
+      operationId: salud
+      security: []
+      responses:
+        '200':
+          description: Servidor y base de datos disponibles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, example: true }
+                  baseDatos: { type: string, example: conectada }
+                  hora: { type: string, format: date-time }
+        '503': { $ref: '#/components/responses/NoDisponible' }
+
+  # ------------------------------------------------------------------ Autenticación
+  /api/auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Iniciar sesión (las tres apps)
+      description: Cada app envía `rolEsperado` para que una cuenta no entre en la app equivocada.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correo, clave]
+              properties:
+                correo: { type: string, format: email, example: rosa@ferreteriaeltambo.pe }
+                clave: { type: string, format: password, example: cliente123 }
+                rolEsperado:
+                  type: array
+                  items: { $ref: '#/components/schemas/Rol' }
+                  example: [cliente]
+      responses:
+        '200':
+          description: Sesión iniciada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sesion' }
+        '400': { $ref: '#/components/responses/DatosInvalidos' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+
+  /api/dispositivos:
+    put:
+      tags: [Autenticación]
+      summary: Registrar el token de notificaciones push (FCM) del celular
+      operationId: registrarDispositivo
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tokenFcm, app]
+              properties:
+                tokenFcm: { type: string }
+                app: { type: string, enum: [VENDEDOR, PORTAL, SUPERVISOR] }
+      responses:
+        '204': { description: Token guardado }
+        '401': { $ref: '#/components/responses/SinSesion' }
+
+  # ------------------------------------------------------------------ Portal
+  /api/portal/registro:
+    post:
+      tags: [Portal]
+      summary: Registrar un prospecto con RUC y consentimiento (HU-P01)
+      description: |
+        Valida el RUC (11 dígitos) y el correo. Si el RUC ya existe como cliente,
+        la cuenta se vincula a ese cliente en lugar de duplicarlo (RF-P02, RN-05).
+        Sin `aceptaTratamientoDatos = true` no se registra (Ley 29733).
+      operationId: registroPortal
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistroPortal' }
+      responses:
+        '201':
+          description: Cuenta creada; devuelve la sesión iniciada
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Sesion'
+                  - type: object
+                    properties:
+                      vinculadoAClienteExistente: { type: boolean, example: false }
+        '409':
+          description: El correo ya tiene una cuenta (`CORREO_EN_USO`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/portal/perfil:
+    get:
+      tags: [Portal]
+      summary: Perfil del cliente y de su empresa
+      operationId: verPerfil
+      responses:
+        '200':
+          description: Perfil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/PerfilCliente' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+    put:
+      tags: [Portal]
+      summary: Actualizar contacto y preferencia de ofertas (RF-P11)
+      description: Con `aceptaOfertas = false` el cliente sale de toda campaña futura (RN-07).
+      operationId: editarPerfil
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                telefono: { type: string, pattern: '^9[0-9]{8}$' }
+                aceptaOfertas: { type: boolean }
+      responses:
+        '200':
+          description: Perfil actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/PerfilCliente' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/portal/solicitudes-cotizacion:
+    get:
+      tags: [Portal]
+      summary: Mis solicitudes de cotización y su estado (RF-P04)
+      operationId: listarSolicitudesCotizacion
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Solicitudes del cliente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/SolicitudCotizacion' }
+    post:
+      tags: [Portal]
+      summary: Solicitar una cotización (HU-P02)
+      description: |
+        Crea un **lead NUEVO con canal PORTAL**, lo asigna al vendedor del territorio,
+        pide su puntaje al servicio de ML y notifica al vendedor (flujo F1).
+        Devuelve un código de seguimiento `SOL-AAAA-NNNN`. Es idempotente por `uuid`:
+        si la app la reenvía al recuperar conexión, no se duplica.
+      operationId: solicitarCotizacion
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NuevaSolicitudCotizacion' }
+            example:
+              uuid: 6f1d2c1e-6a43-4c3a-9b8e-0d6b3a7c9f10
+              productos: [{ productoId: 1, cantidad: 5 }]
+              comentario: Necesitamos empezar en noviembre
+      responses:
+        '201':
+          description: Solicitud recibida
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/SolicitudCotizacion' }
+        '200': { $ref: '#/components/responses/YaExistia' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/portal/solicitudes-cotizacion/{codigo}:
+    get:
+      tags: [Portal]
+      summary: Seguimiento de una solicitud por su código
+      operationId: verSolicitudCotizacion
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema: { type: string, example: SOL-2026-0412 }
+      responses:
+        '200':
+          description: Solicitud con su cotización, si ya existe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/SolicitudCotizacion' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /api/portal/ofertas:
+    get:
+      tags: [Portal]
+      summary: Ofertas vigentes para el cliente (RF-P10)
+      operationId: listarOfertas
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Ofertas de las campañas en las que está el cliente
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Oferta' }
+
+  # ------------------------------------------------------------------ Catálogo
+  /api/productos:
+    get:
+      tags: [Catálogo]
+      summary: Catálogo de productos activos
+      operationId: listarProductos
+      parameters:
+        - name: categoria
+          in: query
+          schema: { type: string, enum: [LICENCIA, MODULO, SERVICIO, CAPACITACION] }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Productos
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Producto' }
+
+  # ------------------------------------------------------------------ Leads
+  /api/leads:
+    get:
+      tags: [Leads]
+      summary: Cartera de leads (HU-V01)
+      description: |
+        `vendedor`: solo sus leads · `supervisor`: todos.
+        Con `desde` devuelve solo los cambios posteriores, incluidos los eliminados (sincronización).
+      operationId: listarLeads
+      parameters:
+        - name: orden
+          in: query
+          schema: { type: string, enum: [puntaje, reciente, dias_sin_contacto], default: puntaje }
+        - name: etapa
+          in: query
+          schema: { type: array, items: { $ref: '#/components/schemas/EtapaLead' } }
+          style: form
+          explode: false
+        - name: canal
+          in: query
+          schema: { $ref: '#/components/schemas/CanalOrigen' }
+        - name: puntajeMin
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 100 }
+        - name: puntajeMax
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 100 }
+        - name: vendedorId
+          in: query
+          description: Solo supervisor
+          schema: { type: integer }
+        - $ref: '#/components/parameters/Desde'
+      responses:
+        '200':
+          description: Leads
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Lead' }
+        '401': { $ref: '#/components/responses/SinSesion' }
+    post:
+      tags: [Leads]
+      summary: Crear lead (idempotente por uuid)
+      description: Solo `vendedor`. El canal es `VENDEDOR`; los leads del Portal y de campañas los crea la API.
+      operationId: crearLead
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LeadEntrada' }
+      responses:
+        '201':
+          description: Lead creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Lead' }
+        '200': { $ref: '#/components/responses/YaExistia' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/leads/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Leads]
+      summary: Detalle del lead
+      operationId: verLead
+      responses:
+        '200':
+          description: Lead
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Lead' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    put:
+      tags: [Leads]
+      summary: Editar datos del lead (no cambia etapa ni canal)
+      operationId: editarLead
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/LeadEntrada'
+                - $ref: '#/components/schemas/ConVersion'
+      responses:
+        '200':
+          description: Lead actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Lead' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+    delete:
+      tags: [Leads]
+      summary: Descartar lead (borrado lógico, solo supervisor)
+      operationId: eliminarLead
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+        - name: version
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Lead marcado como eliminado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Lead' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+
+  /api/leads/{id}/etapa:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Leads]
+      summary: Cambiar etapa con validación de transición
+      description: |
+        Transiciones válidas: avanzar en el embudo, `COTIZADO → CALIFICADO` (recotizar),
+        cualquier etapa abierta → `PERDIDO` (motivo obligatorio) y `PERDIDO → NUEVO`.
+        `GANADO` solo se alcanza cuando el cliente acepta una cotización.
+      operationId: cambiarEtapa
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ConVersion'
+                - type: object
+                  required: [etapa]
+                  properties:
+                    etapa: { $ref: '#/components/schemas/EtapaLead' }
+                    motivoPerdida: { type: string, maxLength: 120 }
+      responses:
+        '200':
+          description: Etapa cambiada (queda en el historial)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Lead' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/leads/{id}/historial:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Leads]
+      summary: Historial de etapas, reasignaciones y puntaje (RNF-09)
+      operationId: historialLead
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Eventos del lead, del más reciente al más antiguo
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            campo: { type: string, enum: [ETAPA, VENDEDOR, PUNTAJE] }
+                            valorAnterior: { type: string, nullable: true }
+                            valorNuevo: { type: string }
+                            usuarioNombre: { type: string, nullable: true }
+                            fecha: { type: string, format: date-time }
+
+  /api/leads/reasignar:
+    put:
+      tags: [Leads]
+      summary: Reasignar leads en lote (HU-S02, solo supervisor)
+      operationId: reasignarLeads
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [leadIds, vendedorDestinoId]
+              properties:
+                leadIds: { type: array, minItems: 1, items: { type: integer } }
+                vendedorDestinoId: { type: integer }
+      responses:
+        '200':
+          description: Leads reasignados; el vendedor destino recibe una notificación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reasignados: { type: integer, example: 3 }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  # ------------------------------------------------------------------ Interacciones y tareas
+  /api/interacciones:
+    get:
+      tags: [Interacciones y tareas]
+      summary: Interacciones (por lead o cambios desde una fecha)
+      operationId: listarInteracciones
+      parameters:
+        - name: leadId
+          in: query
+          schema: { type: integer }
+        - $ref: '#/components/parameters/Desde'
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Interacciones
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Interaccion' }
+    post:
+      tags: [Interacciones y tareas]
+      summary: Registrar interacción (llamada, WhatsApp, correo, reunión o visita)
+      description: Actualiza `ultimoContactoEn` del lead. La nota es obligatoria solo en reuniones (RF-V06).
+      operationId: crearInteraccion
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InteraccionEntrada' }
+      responses:
+        '201':
+          description: Interacción registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Interaccion' }
+        '200': { $ref: '#/components/responses/YaExistia' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/tareas:
+    get:
+      tags: [Interacciones y tareas]
+      summary: Tareas del vendedor (o todas, para el supervisor)
+      operationId: listarTareas
+      parameters:
+        - name: tipo
+          in: query
+          schema: { type: string, enum: [SEGUIMIENTO, RETENCION] }
+        - $ref: '#/components/parameters/Desde'
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Tareas
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Tarea' }
+    post:
+      tags: [Interacciones y tareas]
+      summary: Crear tarea (el supervisor puede crear tareas de RETENCION para un vendedor)
+      operationId: crearTarea
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TareaEntrada' }
+      responses:
+        '201':
+          description: Tarea creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Tarea' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  # ------------------------------------------------------------------ Visitas
+  /api/visitas/ruta:
+    get:
+      tags: [Visitas]
+      summary: Ruta del día del vendedor (HU-V04)
+      description: Visitas programadas con coordenadas del cliente y puntaje, ordenadas por puntaje y distancia.
+      operationId: rutaDelDia
+      parameters:
+        - name: fecha
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Visitas del día
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Visita' }
+
+  /api/visitas:
+    post:
+      tags: [Visitas]
+      summary: Programar visita o hacer check-in con GPS (RF-V12, RF-V13)
+      description: |
+        Si llega `checkin`, la API calcula la distancia al cliente. Si es mayor a 300 m
+        y no hay `motivoDistancia`, responde `422 MOTIVO_DISTANCIA_REQUERIDO`.
+        Funciona offline: la app la guarda en Room y el SyncWorker la envía con su uuid.
+      operationId: registrarVisita
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VisitaEntrada' }
+      responses:
+        '201':
+          description: Visita registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Visita' }
+        '200': { $ref: '#/components/responses/YaExistia' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  # ------------------------------------------------------------------ Cotizaciones
+  /api/cotizaciones:
+    get:
+      tags: [Cotizaciones]
+      summary: Cotizaciones según el rol
+      description: |
+        `vendedor`: las suyas · `cliente`: las de su empresa (sin borradores) ·
+        `supervisor`: todas; con `estado=PEND_APROBACION` ve las que esperan su aprobación.
+      operationId: listarCotizaciones
+      parameters:
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoCotizacion' }
+        - name: leadId
+          in: query
+          schema: { type: integer }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Cotizaciones
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Cotizacion' }
+    post:
+      tags: [Cotizaciones]
+      summary: Crear cotización (HU-V03)
+      description: |
+        El total lo calcula el servidor: Σ(precio × cantidad) × (1 − descuento).
+        Con `enviar = true` y descuento ≤ 10 % pasa a `ENVIADA` (el lead a `COTIZADO` y el cliente
+        recibe una notificación). Con descuento > 10 % queda en `PEND_APROBACION` (RN-03).
+      operationId: crearCotizacion
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CotizacionEntrada' }
+            example:
+              uuid: 1c9e1a52-2a0b-4d07-9e36-3d9e3f7c11aa
+              leadId: 87
+              descuentoPct: 8
+              items: [{ productoId: 1, cantidad: 5 }, { productoId: 7, cantidad: 2 }]
+              enviar: true
+      responses:
+        '201':
+          description: Cotización creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Cotizacion' }
+        '200': { $ref: '#/components/responses/YaExistia' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/cotizaciones/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Cotizaciones]
+      summary: Detalle de la cotización con sus productos
+      operationId: verCotizacion
+      responses:
+        '200':
+          description: Cotización
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Cotizacion' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /api/cotizaciones/{id}/respuesta:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Cotizaciones]
+      summary: Aceptar o rechazar una cotización (HU-P03, solo cliente)
+      description: |
+        **Aceptar**: solo si está `ENVIADA` y vigente (RN-04). El lead pasa a `GANADO`,
+        se crea o reutiliza la cuenta del cliente por RUC (RN-05) y se notifica al vendedor.
+        **Rechazar**: `motivo` obligatorio.
+      operationId: responderCotizacion
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [ACEPTAR, RECHAZAR] }
+                motivo: { type: string, enum: [PRECIO, PLAZO, OTRA_EMPRESA, OTRO] }
+                comentario: { type: string, maxLength: 300 }
+            examples:
+              aceptar:
+                value: { decision: ACEPTAR }
+              rechazar:
+                value: { decision: RECHAZAR, motivo: PRECIO, comentario: Encontramos otra opción más económica }
+      responses:
+        '200':
+          description: Respuesta registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Cotizacion' }
+        '409':
+          description: La cotización ya fue respondida o venció (`YA_RESPONDIDA`, `COTIZACION_VENCIDA`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/cotizaciones/{id}/aprobacion:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Cotizaciones]
+      summary: Aprobar u observar un descuento mayor a 10 % (solo supervisor)
+      operationId: aprobarCotizacion
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [aprobar]
+              properties:
+                aprobar: { type: boolean }
+                observacion: { type: string, maxLength: 200 }
+      responses:
+        '200':
+          description: Aprobada (pasa a ENVIADA) u observada (vuelve a BORRADOR)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Cotizacion' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+
+  # ------------------------------------------------------------------ Servicio
+  /api/servicio/solicitudes:
+    get:
+      tags: [Servicio]
+      summary: Solicitudes de servicio según el rol
+      description: |
+        `cliente`: las de su empresa · `agente`: su cola, ordenada por prioridad y antigüedad,
+        con `slaPorVencer = true` si faltan menos de 2 horas (RF-S06) · `supervisor`: todas.
+      operationId: listarSolicitudesServicio
+      parameters:
+        - name: estado
+          in: query
+          schema: { $ref: '#/components/schemas/EstadoSolicitud' }
+        - name: cola
+          in: query
+          description: Para el agente — `mia` (asignadas a mí) o `general` (sin agente)
+          schema: { type: string, enum: [mia, general] }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Solicitudes
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/SolicitudServicio' }
+    post:
+      tags: [Servicio]
+      summary: Abrir solicitud de servicio — proceso de lealtad (HU-P04, flujo F3)
+      description: |
+        La API **obtiene la información del cliente**, calcula su **puntaje de valor y lealtad** y:
+        - puntaje ≥ 70 → prioridad `ALTA`, SLA de 4 h, se asigna al **agente senior con menos carga** (RN-06);
+        - si no → prioridad `NORMAL`, SLA de 24 h, agente disponible o cola general.
+        Devuelve el número de ticket `SRV-AAAA-NNNN` y el agente asignado.
+      operationId: abrirSolicitudServicio
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SolicitudServicioEntrada' }
+            example:
+              uuid: 0b7d9f0e-41e2-4b8e-8a0a-6c2b1f3e9d55
+              categoria: FACTURACION
+              descripcion: No se envían las boletas a SUNAT desde ayer en la tarde
+      responses:
+        '201':
+          description: Ticket creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/SolicitudServicio' }
+        '200': { $ref: '#/components/responses/YaExistia' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/servicio/solicitudes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Servicio]
+      summary: Detalle del ticket con su historial (y el perfil del cliente para el agente)
+      operationId: verSolicitudServicio
+      responses:
+        '200':
+          description: Ticket
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/SolicitudServicio' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /api/servicio/solicitudes/{id}/foto:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Servicio]
+      summary: Adjuntar la foto del problema (opcional, máx. 5 MB)
+      operationId: subirFotoSolicitud
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                foto: { type: string, format: binary }
+      responses:
+        '200':
+          description: Foto guardada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fotoUrl: { type: string, format: uri }
+        '413':
+          description: La foto supera 5 MB (`FOTO_MUY_GRANDE`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/servicio/solicitudes/{id}/estado:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [Servicio]
+      summary: Cambiar el estado del ticket
+      description: |
+        `agente`: ABIERTA → EN_ATENCION (tomar caso), EN_ATENCION → RESUELTA (con `solucion`)
+        o → ABIERTA (devolver a la cola). `cliente`: RESUELTA → CERRADA (confirmar) o → EN_ATENCION (reabrir).
+        Cada cambio queda en el historial y se notifica al cliente (RF-P09).
+      operationId: cambiarEstadoSolicitud
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ConVersion'
+                - type: object
+                  required: [estado]
+                  properties:
+                    estado: { $ref: '#/components/schemas/EstadoSolicitud' }
+                    solucion: { type: string }
+                    nota: { type: string, maxLength: 300 }
+      responses:
+        '200':
+          description: Estado cambiado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/SolicitudServicio' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/servicio/solicitudes/{id}/calificacion:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Servicio]
+      summary: Calificar la atención de 1 a 5 (HU-P06, una sola vez)
+      description: La calificación actualiza el puntaje de lealtad del cliente.
+      operationId: calificarSolicitud
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calificacion]
+              properties:
+                calificacion: { type: integer, minimum: 1, maximum: 5 }
+                comentario: { type: string, maxLength: 300 }
+      responses:
+        '201':
+          description: Calificación registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/SolicitudServicio' }
+        '409':
+          description: El ticket ya fue calificado (`YA_CALIFICADA`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  # ------------------------------------------------------------------ Campañas
+  /api/campanas:
+    get:
+      tags: [Campañas]
+      summary: Campañas (supervisor)
+      operationId: listarCampanas
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Campañas
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Lista'
+                  - type: object
+                    properties:
+                      datos:
+                        type: array
+                        items: { $ref: '#/components/schemas/Campana' }
+    post:
+      tags: [Campañas]
+      summary: Crear campaña en borrador (HU-S04)
+      operationId: crearCampana
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CampanaEntrada' }
+      responses:
+        '201':
+          description: Campaña creada con el tamaño del segmento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Campana' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '422': { $ref: '#/components/responses/ReglaNegocio' }
+
+  /api/campanas/previsualizar:
+    post:
+      tags: [Campañas]
+      summary: Cuántos clientes recibirán la campaña antes de enviarla
+      description: Excluye a los clientes que desactivaron las ofertas (RN-07).
+      operationId: previsualizarSegmento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Segmento' }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Tamaño del segmento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientes: { type: integer, example: 186 }
+
+  /api/campanas/{id}/envio:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Campañas]
+      summary: Enviar la campaña (genera un envío por cliente y canal)
+      operationId: enviarCampana
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      responses:
+        '200':
+          description: Campaña enviada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  envios: { type: integer, example: 558 }
+        '409':
+          description: La campaña ya fue enviada (`YA_ENVIADA`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/campanas/{id}/respuesta:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      tags: [Campañas]
+      summary: Registrar "Me interesa" (HU-P05, solo cliente)
+      description: Crea un lead con canal `CAMPANA` y el canal por el que respondió, y notifica al vendedor de la cuenta.
+      operationId: responderCampana
+      parameters:
+        - $ref: '#/components/parameters/OperacionUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [canal]
+              properties:
+                canal: { $ref: '#/components/schemas/CanalCampana' }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '201':
+          description: Respuesta registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  leadId: { type: integer }
+                  mensaje: { type: string, example: Tu asesor te contactará pronto. }
+        '200': { $ref: '#/components/responses/YaExistia' }
+
+  /api/campanas/{id}/resultados:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Campañas]
+      summary: Respuestas por canal y conversión (RF-S08)
+      operationId: resultadosCampana
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Resultados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  porCanal:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        canal: { $ref: '#/components/schemas/CanalCampana' }
+                        enviados: { type: integer, example: 186 }
+                        respuestas: { type: integer, example: 18 }
+                        tasaRespuesta: { type: number, example: 9.7 }
+                  leadsGenerados: { type: integer, example: 41 }
+                  ganados: { type: integer, example: 9 }
+
+  # ------------------------------------------------------------------ Clientes
+  /api/clientes/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Clientes]
+      summary: Ficha del cliente con historial de compras y puntajes
+      description: El vendedor ve solo sus cuentas; agente y supervisor ven todas.
+      operationId: verCliente
+      responses:
+        '200':
+          description: Cliente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dato: { $ref: '#/components/schemas/Cliente' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+
+  /api/ml/recomendaciones/{clienteId}:
+    get:
+      tags: [Clientes]
+      summary: Hasta 3 productos recomendados para venta cruzada (ML-04)
+      operationId: recomendaciones
+      parameters:
+        - name: clienteId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Recomendaciones con su justificación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos:
+                    type: array
+                    maxItems: 3
+                    items: { $ref: '#/components/schemas/Recomendacion' }
+
+  # ------------------------------------------------------------------ Analítica
+  /api/analitica/embudo:
+    get:
+      tags: [Analítica]
+      summary: Cantidad y valor de leads por etapa (RF-S01)
+      operationId: embudo
+      parameters:
+        - $ref: '#/components/parameters/Mes'
+        - name: vendedorId
+          in: query
+          schema: { type: integer }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Embudo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  etapas:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        etapa: { $ref: '#/components/schemas/EtapaLead' }
+                        cantidad: { type: integer }
+                        valor: { type: number }
+
+  /api/analitica/pronostico:
+    get:
+      tags: [Analítica]
+      summary: Pronóstico de ventas del mes (RF-S02)
+      description: Σ valor potencial × probabilidad de cierre (ML-01) de cada lead abierto.
+      operationId: pronostico
+      parameters:
+        - $ref: '#/components/parameters/Mes'
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Pronóstico
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mes: { type: string, example: 2026-11 }
+                  pronostico: { type: number, example: 184600 }
+                  meta: { type: number, example: 200000 }
+                  ganadoReal: { type: number, example: 96500 }
+
+  /api/analitica/clientes-riesgo:
+    get:
+      tags: [Analítica]
+      summary: Clientes por probabilidad de cancelación (RF-S09, ML-02)
+      operationId: clientesRiesgo
+      parameters:
+        - name: minimo
+          in: query
+          schema: { type: number, minimum: 0, maximum: 1, default: 0.6 }
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Clientes en riesgo con CLTV y factores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Cliente' }
+
+  /api/analitica/clientes-rentables:
+    get:
+      tags: [Analítica]
+      summary: Top 10 de clientes por margen acumulado (RF-S12)
+      operationId: clientesRentables
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Clientes rentables
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  datos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Cliente' }
+
+  # ------------------------------------------------------------------ Sincronización
+  /api/sync/cambios:
+    get:
+      tags: [Sincronización]
+      summary: Todo lo que cambió desde la última sincronización (las tres apps)
+      description: Devuelve solo lo que el rol puede ver. La app guarda `servidorTiempo` y lo envía como `desde` la próxima vez.
+      operationId: cambios
+      parameters:
+        - $ref: '#/components/parameters/Desde'
+      responses:
+        '401': { $ref: '#/components/responses/SinSesion' }
+        '200':
+          description: Cambios por entidad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  servidorTiempo: { type: string, format: date-time }
+                  leads: { type: array, items: { $ref: '#/components/schemas/Lead' } }
+                  interacciones: { type: array, items: { $ref: '#/components/schemas/Interaccion' } }
+                  tareas: { type: array, items: { $ref: '#/components/schemas/Tarea' } }
+                  visitas: { type: array, items: { $ref: '#/components/schemas/Visita' } }
+                  cotizaciones: { type: array, items: { $ref: '#/components/schemas/Cotizacion' } }
+                  solicitudes: { type: array, items: { $ref: '#/components/schemas/SolicitudServicio' } }
+                  productos: { type: array, items: { $ref: '#/components/schemas/Producto' } }
+
+components:
+  securitySchemes:
+    jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    OperacionUUID:
+      name: X-Operacion-UUID
+      in: header
+      required: true
+      description: UUID único de la operación (idempotencia). El SyncWorker reenvía siempre el mismo.
+      schema: { type: string, format: uuid }
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Desde:
+      name: desde
+      in: query
+      description: Solo cambios posteriores a esta fecha (incluye eliminados)
+      schema: { type: string, format: date-time }
+    Mes:
+      name: mes
+      in: query
+      schema: { type: string, pattern: '^[0-9]{4}-[0-9]{2}$', example: 2026-11 }
+
+  responses:
+    DatosInvalidos:
+      description: Faltan datos o el JSON no es válido
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: DATOS_INCOMPLETOS, mensaje: Ingresa correo y contraseña. }
+    SinSesion:
+      description: Sin token, token vencido o credenciales incorrectas
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: SESION_INVALIDA, mensaje: La sesión expiró. Vuelve a iniciar sesión. }
+    SinPermiso:
+      description: El rol no puede hacer esta operación
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: SIN_PERMISO, mensaje: Tu rol no tiene permiso para realizar esta operación. }
+    NoEncontrado:
+      description: No existe o el rol no puede verlo
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: NO_ENCONTRADO, mensaje: Registro no encontrado. }
+    Conflicto:
+      description: Conflicto de versión, registro reasignado o eliminado; incluye el dato actual
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - type: object
+                properties:
+                  actual:
+                    type: object
+                    description: Versión actual del registro en el servidor
+          example: { error: CONFLICTO_VERSION, mensaje: Otro usuario modificó este registro., actual: {} }
+    ReglaNegocio:
+      description: Viola una regla de negocio (validación del servidor)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            ruc:
+              value: { error: RUC_INVALIDO, mensaje: El RUC debe tener 11 dígitos. }
+            consentimiento:
+              value: { error: CONSENTIMIENTO_REQUERIDO, mensaje: Debes aceptar el uso de tus datos para registrarte. }
+            descripcion:
+              value: { error: DESCRIPCION_CORTA, mensaje: Describe el problema con al menos 20 caracteres. }
+            transicion:
+              value: { error: TRANSICION_INVALIDA, mensaje: 'No se puede pasar de CALIFICADO a NUEVO.' }
+    YaExistia:
+      description: El registro con ese uuid ya existía (reenvío); se devuelve sin duplicarlo
+      headers:
+        X-Operacion-Duplicada:
+          schema: { type: boolean }
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              dato: { type: object }
+              duplicada: { type: boolean, example: true }
+    NoDisponible:
+      description: Base de datos no disponible; la app reintenta más tarde
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [error, mensaje]
+      properties:
+        error: { type: string, example: CODIGO_DEL_ERROR }
+        mensaje: { type: string, example: Texto claro para mostrar al usuario. }
+    Lista:
+      type: object
+      properties:
+        servidorTiempo: { type: string, format: date-time }
+        total: { type: integer }
+        datos: { type: array, items: { type: object } }
+    ConVersion:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, description: Versión que tenía la app al hacer el cambio }
+
+    Rol: { type: string, enum: [vendedor, supervisor, agente, cliente] }
+    EtapaLead: { type: string, enum: [NUEVO, CONTACTADO, CALIFICADO, COTIZADO, GANADO, PERDIDO] }
+    CanalOrigen: { type: string, enum: [VENDEDOR, PORTAL, CAMPANA] }
+    CanalCampana: { type: string, enum: [PUSH, WHATSAPP, CORREO, LLAMADA, VISITA] }
+    EstadoCotizacion: { type: string, enum: [BORRADOR, PEND_APROBACION, ENVIADA, ACEPTADA, RECHAZADA, VENCIDA] }
+    EstadoSolicitud: { type: string, enum: [ABIERTA, EN_ATENCION, RESUELTA, CERRADA] }
+
+    Sesion:
+      type: object
+      properties:
+        token: { type: string }
+        usuario:
+          type: object
+          properties:
+            id: { type: integer }
+            nombre: { type: string, example: Rosa Quispe }
+            correo: { type: string }
+            rol: { $ref: '#/components/schemas/Rol' }
+            clienteId: { type: integer, nullable: true }
+
+    RegistroPortal:
+      type: object
+      required: [ruc, razonSocial, contacto, telefono, correo, clave, aceptaTratamientoDatos]
+      properties:
+        ruc: { type: string, pattern: '^(10|15|17|20)[0-9]{9}$', example: '20612345671' }
+        razonSocial: { type: string, maxLength: 150, example: Ferretería El Tambo SAC }
+        contacto: { type: string, maxLength: 120, example: Rosa Quispe }
+        telefono: { type: string, pattern: '^9[0-9]{8}$', example: '964123456' }
+        correo: { type: string, format: email, example: rosa@ferreteriaeltambo.pe }
+        clave: { type: string, format: password, minLength: 8 }
+        aceptaTratamientoDatos: { type: boolean, description: 'Debe ser true (Ley 29733)' }
+        aceptaOfertas: { type: boolean, default: true }
+
+    PerfilCliente:
+      type: object
+      properties:
+        nombre: { type: string }
+        correo: { type: string }
+        telefono: { type: string }
+        empresa:
+          type: object
+          properties:
+            id: { type: integer }
+            ruc: { type: string }
+            razonSocial: { type: string }
+            clienteDesde: { type: string, format: date }
+        aceptaOfertas: { type: boolean }
+        vendedorAsignado: { type: string, nullable: true, example: Carlos Mendoza Ríos }
+
+    NuevaSolicitudCotizacion:
+      type: object
+      required: [uuid, productos]
+      properties:
+        uuid: { type: string, format: uuid }
+        productos:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productoId, cantidad]
+            properties:
+              productoId: { type: integer }
+              cantidad: { type: integer, minimum: 1 }
+        comentario: { type: string, maxLength: 500 }
+
+    SolicitudCotizacion:
+      type: object
+      properties:
+        codigo: { type: string, example: SOL-2026-0412 }
+        uuid: { type: string, format: uuid }
+        estado: { type: string, enum: [RECIBIDA, EN_PREPARACION, COTIZADA, CERRADA], description: 'Vista del cliente: NUEVO=RECIBIDA, CONTACTADO/CALIFICADO=EN_PREPARACION, COTIZADO=COTIZADA, GANADO/PERDIDO=CERRADA' }
+        productos:
+          type: array
+          items:
+            type: object
+            properties:
+              nombre: { type: string }
+              cantidad: { type: integer }
+        comentario: { type: string }
+        vendedorNombre: { type: string, nullable: true }
+        cotizacionId: { type: integer, nullable: true }
+        creadoEn: { type: string, format: date-time }
+
+    Producto:
+      type: object
+      properties:
+        id: { type: integer }
+        codigo: { type: string, example: FAC-01 }
+        nombre: { type: string, example: Facturación electrónica (licencia por usuario) }
+        categoria: { type: string, enum: [LICENCIA, MODULO, SERVICIO, CAPACITACION] }
+        precio: { type: number, example: 1900 }
+
+    LeadEntrada:
+      type: object
+      required: [uuid, empresa, contacto, valorPotencial]
+      properties:
+        uuid: { type: string, format: uuid }
+        empresa: { type: string, minLength: 1, maxLength: 150 }
+        contacto: { type: string, minLength: 1, maxLength: 120 }
+        telefono: { type: string, pattern: '^9[0-9]{8}$' }
+        correo: { type: string, format: email }
+        ruc: { type: string, pattern: '^[0-9]{11}$' }
+        valorPotencial: { type: number, minimum: 0 }
+    Lead:
+      type: object
+      properties:
+        id: { type: integer }
+        uuid: { type: string, format: uuid }
+        empresa: { type: string, example: Ferretería El Tambo SAC }
+        contacto: { type: string, example: Rosa Quispe }
+        telefono: { type: string }
+        correo: { type: string }
+        valorPotencial: { type: number, example: 12400 }
+        etapa: { $ref: '#/components/schemas/EtapaLead' }
+        canalOrigen: { $ref: '#/components/schemas/CanalOrigen' }
+        codigoSeguimiento: { type: string, nullable: true, example: SOL-2026-0412 }
+        puntaje: { type: integer, minimum: 0, maximum: 100, nullable: true, example: 78 }
+        puntajeFactores:
+          type: array
+          description: Factores que explican el puntaje (ML transparente)
+          items:
+            type: object
+            properties:
+              factor: { type: string, example: Pidió cotización desde el Portal }
+              peso: { type: number, example: 0.4 }
+        diasSinContacto: { type: integer, example: 3 }
+        vendedorId: { type: integer }
+        vendedorNombre: { type: string }
+        clienteId: { type: integer, nullable: true }
+        motivoPerdida: { type: string, nullable: true }
+        version: { type: integer }
+        eliminado: { type: boolean }
+        actualizadoEn: { type: string, format: date-time }
+
+    InteraccionEntrada:
+      type: object
+      required: [uuid, leadUuid, tipo]
+      properties:
+        uuid: { type: string, format: uuid }
+        leadUuid: { type: string, format: uuid }
+        tipo: { type: string, enum: [Llamada, WhatsApp, Correo, Reunión, Visita] }
+        resultado: { type: string, enum: [CONTESTO, NO_CONTESTO, INTERESADO, NO_INTERESADO] }
+        fechaHora: { type: string, format: date-time }
+        nota: { type: string }
+    Interaccion:
+      allOf:
+        - $ref: '#/components/schemas/InteraccionEntrada'
+        - type: object
+          properties:
+            id: { type: integer }
+            leadId: { type: integer }
+            registradoPor: { type: string }
+            version: { type: integer }
+            eliminado: { type: boolean }
+
+    TareaEntrada:
+      type: object
+      required: [uuid, leadUuid, descripcion, fechaLimite]
+      properties:
+        uuid: { type: string, format: uuid }
+        leadUuid: { type: string, format: uuid }
+        descripcion: { type: string, maxLength: 200 }
+        fechaLimite: { type: string, format: date, description: No se aceptan fechas pasadas }
+        tipo: { type: string, enum: [SEGUIMIENTO, RETENCION], default: SEGUIMIENTO }
+        asignadaA: { type: integer, description: Solo supervisor (tareas de retención) }
+    Tarea:
+      allOf:
+        - $ref: '#/components/schemas/TareaEntrada'
+        - type: object
+          properties:
+            id: { type: integer }
+            completada: { type: boolean }
+            version: { type: integer }
+            eliminado: { type: boolean }
+
+    VisitaEntrada:
+      type: object
+      required: [uuid, leadUuid, fechaProgramada]
+      properties:
+        uuid: { type: string, format: uuid }
+        leadUuid: { type: string, format: uuid }
+        fechaProgramada: { type: string, format: date }
+        checkin:
+          type: object
+          required: [latitud, longitud, fechaHora]
+          properties:
+            latitud: { type: number, minimum: -90, maximum: 90, example: -12.0569 }
+            longitud: { type: number, minimum: -180, maximum: 180, example: -75.2153 }
+            precisionM: { type: number, example: 12 }
+            fechaHora: { type: string, format: date-time }
+        motivoDistancia: { type: string, maxLength: 200 }
+    Visita:
+      type: object
+      properties:
+        id: { type: integer }
+        uuid: { type: string, format: uuid }
+        leadId: { type: integer }
+        empresa: { type: string }
+        puntaje: { type: integer, nullable: true }
+        latitudCliente: { type: number, nullable: true }
+        longitudCliente: { type: number, nullable: true }
+        fechaProgramada: { type: string, format: date }
+        checkinEn: { type: string, format: date-time, nullable: true }
+        distanciaM: { type: number, nullable: true, example: 35 }
+        motivoDistancia: { type: string, nullable: true }
+        version: { type: integer }
+
+    CotizacionEntrada:
+      type: object
+      required: [uuid, leadId, items]
+      properties:
+        uuid: { type: string, format: uuid }
+        leadId: { type: integer }
+        descuentoPct: { type: number, minimum: 0, maximum: 50, default: 0 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productoId, cantidad]
+            properties:
+              productoId: { type: integer }
+              cantidad: { type: integer, minimum: 1 }
+        enviar: { type: boolean, default: false, description: true = enviar al cliente al crearla }
+    Cotizacion:
+      type: object
+      properties:
+        id: { type: integer }
+        uuid: { type: string, format: uuid }
+        numero: { type: string, example: COT-2026-0142 }
+        leadId: { type: integer }
+        empresa: { type: string }
+        vendedorNombre: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productoId: { type: integer }
+              nombre: { type: string }
+              cantidad: { type: integer }
+              precioUnit: { type: number }
+              subtotal: { type: number }
+        subtotal: { type: number, example: 13480 }
+        descuentoPct: { type: number, example: 8 }
+        total: { type: number, example: 12401.6 }
+        estado: { $ref: '#/components/schemas/EstadoCotizacion' }
+        vigenciaHasta: { type: string, format: date, nullable: true }
+        diasParaVencer: { type: integer, nullable: true, example: 12 }
+        motivoRechazo: { type: string, nullable: true, enum: [PRECIO, PLAZO, OTRA_EMPRESA, OTRO] }
+        version: { type: integer }
+
+    SolicitudServicioEntrada:
+      type: object
+      required: [uuid, categoria, descripcion]
+      properties:
+        uuid: { type: string, format: uuid }
+        categoria: { type: string, enum: [FACTURACION, ACCESO, ERROR_SISTEMA, CAPACITACION, OTRO] }
+        descripcion: { type: string, minLength: 20 }
+    SolicitudServicio:
+      type: object
+      properties:
+        id: { type: integer }
+        uuid: { type: string, format: uuid }
+        numero: { type: string, example: SRV-2026-0388 }
+        categoria: { type: string }
+        descripcion: { type: string }
+        fotoUrl: { type: string, format: uri, nullable: true }
+        prioridad: { type: string, enum: [ALTA, NORMAL] }
+        clientePreferente: { type: boolean, description: true si puntaje ≥ 70 (no se muestra el puntaje al cliente) }
+        agenteNombre: { type: string, nullable: true, example: Sofía Rojas }
+        estado: { $ref: '#/components/schemas/EstadoSolicitud' }
+        slaHasta: { type: string, format: date-time }
+        slaPorVencer: { type: boolean }
+        solucion: { type: string, nullable: true }
+        calificacion: { type: integer, nullable: true, minimum: 1, maximum: 5 }
+        historial:
+          type: array
+          items:
+            type: object
+            properties:
+              estado: { $ref: '#/components/schemas/EstadoSolicitud' }
+              fecha: { type: string, format: date-time }
+              nota: { type: string, nullable: true }
+        perfilCliente:
+          description: Solo para agente y supervisor
+          allOf:
+            - $ref: '#/components/schemas/Cliente'
+        version: { type: integer }
+
+    Segmento:
+      type: object
+      properties:
+        segmento: { type: string, example: PYME }
+        tieneProducto: { type: string, example: FAC-01 }
+        sinProducto: { type: string, example: INV-01 }
+        puntajeValorMin: { type: integer, minimum: 0, maximum: 100 }
+    CampanaEntrada:
+      type: object
+      required: [nombre, segmento, oferta, canales, inicio, fin]
+      properties:
+        nombre: { type: string, maxLength: 100 }
+        segmento: { $ref: '#/components/schemas/Segmento' }
+        oferta: { type: string, maxLength: 200 }
+        productoId: { type: integer }
+        descuentoPct: { type: number, minimum: 0, maximum: 50 }
+        canales: { type: array, minItems: 1, items: { $ref: '#/components/schemas/CanalCampana' } }
+        inicio: { type: string, format: date }
+        fin: { type: string, format: date }
+    Campana:
+      allOf:
+        - $ref: '#/components/schemas/CampanaEntrada'
+        - type: object
+          properties:
+            id: { type: integer }
+            estado: { type: string, enum: [BORRADOR, ENVIADA, FINALIZADA] }
+            tamanoSegmento: { type: integer }
+    Oferta:
+      type: object
+      properties:
+        campanaId: { type: integer }
+        titulo: { type: string, example: Módulo Inventario · −15 % }
+        descripcion: { type: string, example: Controla tu stock desde el celular. Integrado con tu Facturación. }
+        validaHasta: { type: string, format: date }
+        yaRespondio: { type: boolean }
+
+    Cliente:
+      type: object
+      properties:
+        id: { type: integer }
+        ruc: { type: string }
+        razonSocial: { type: string }
+        clienteDesde: { type: string, format: date }
+        vendedorNombre: { type: string }
+        puntajeValor: { type: integer, nullable: true, example: 84 }
+        probCancelacion: { type: number, nullable: true, example: 0.12 }
+        factoresRiesgo:
+          type: array
+          items:
+            type: object
+            properties:
+              factor: { type: string, example: 60 días sin comprar }
+              peso: { type: number, example: 0.6 }
+        cltv: { type: number, nullable: true, example: 41000 }
+        comprasTotal: { type: number, example: 41000 }
+        ticketsPrevios: { type: integer, example: 1 }
+        csatPromedio: { type: number, nullable: true, example: 4.8 }
+        compras:
+          type: array
+          items:
+            type: object
+            properties:
+              numero: { type: string }
+              fecha: { type: string, format: date }
+              producto: { type: string }
+              monto: { type: number }
+    Recomendacion:
+      type: object
+      properties:
+        productoId: { type: integer }
+        producto: { type: string, example: Módulo Inventario }
+        confianza: { type: number, example: 0.52 }
+        razon: { type: string, example: Clientes que compraron Facturación también compraron Inventario }

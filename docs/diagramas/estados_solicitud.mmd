@@ -1,0 +1,9 @@
+stateDiagram-v2
+    direction LR
+    [*] --> ABIERTA: cliente la registra (prioridad por puntaje)
+    ABIERTA --> EN_ATENCION: agente toma el caso
+    EN_ATENCION --> ABIERTA: devuelve a la cola
+    EN_ATENCION --> RESUELTA: agente registra solución
+    RESUELTA --> EN_ATENCION: cliente reabre
+    RESUELTA --> CERRADA: cliente confirma o pasan 48 h
+    CERRADA --> [*]: calificación 1 a 5

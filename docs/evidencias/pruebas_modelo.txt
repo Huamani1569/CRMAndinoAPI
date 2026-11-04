@@ -1,0 +1,30 @@
+OK  El lead del Portal recibe código SOL-AAAA-0001
+OK  Lead del Portal sin código de seguimiento
+OK  RN-01: lead sin empresa
+OK  RN-02: el canal de origen no se modifica
+OK  PERDIDO exige motivo
+OK  El embudo no retrocede (CALIFICADO → NUEVO)
+OK  Total = Σ(precio × cantidad) × (1 − 8 %) = S/ 12,401.60
+OK  No se puede escribir un total distinto al calculado
+OK  RN-03: descuento de 15 % sin aprobación del supervisor
+OK  Con aprobación del supervisor la cotización se envía
+OK  RN-04: no se acepta una cotización vencida
+OK  Rechazar sin motivo
+OK  Un lead GANADO ya no cambia de etapa
+OK  RNF-09: el historial registró las 4 transiciones de etapa
+OK  La compra aparece en el historial del cliente (2 productos)
+OK  RF-V13: check-in a 450 m sin motivo
+OK  Check-in sin coordenadas GPS
+OK  RN-06: un cliente con puntaje 84 no puede quedar en prioridad NORMAL
+OK  RF-P07: descripción menor a 20 caracteres
+OK  No se califica un ticket que no está resuelto
+OK  Un ticket ABIERTO no salta a CERRADA
+OK  RF-P12: solo una calificación por ticket
+OK  RNF-09: el ticket guarda su historial (ABIERTA → EN_ATENCION → RESUELTA)
+OK  Canal de campaña inválido
+OK  RN-07: un cliente sin ofertas no recibe campañas
+OK  RF-S08: respuestas por canal calculadas
+OK  Un usuario cliente siempre pertenece a una cuenta
+OK  RF-P01: RUC de 11 dígitos
+
+>>> TODAS LAS PRUEBAS DEL MODELO PASARON

@@ -1,0 +1,14 @@
+stateDiagram-v2
+    direction LR
+    [*] --> NUEVO: Vendedor / Portal / Campaña
+    NUEVO --> CONTACTADO
+    CONTACTADO --> CALIFICADO
+    CALIFICADO --> COTIZADO: envía cotización
+    COTIZADO --> CALIFICADO: rechazo, recotizar
+    COTIZADO --> GANADO: cliente acepta
+    NUEVO --> PERDIDO: con motivo
+    CONTACTADO --> PERDIDO: con motivo
+    CALIFICADO --> PERDIDO: con motivo
+    COTIZADO --> PERDIDO: con motivo
+    PERDIDO --> NUEVO: reactivar
+    GANADO --> [*]: crea cuenta (RN-05)
