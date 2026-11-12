@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const db = require('../src/db');
 
 const URL = process.env.DATABASE_URL_PRUEBAS;
+process.env.GOOGLE_TOKENS_DE_PRUEBA = '1';   // tokens de Google simulados solo en las pruebas
 if (!URL) { console.error('Define DATABASE_URL_PRUEBAS con una base de PRUEBAS.'); process.exit(1); }
 db.usarPool(new Pool({ connectionString: URL }));
 const { aplicarMigraciones } = require('../src/migraciones');
@@ -247,6 +248,20 @@ const login = async (correo, clave, app) => (await api('POST', '/api/auth/login'
     log((await api('GET', `/api/leads/${lead2.id}/historial`, { token: SUP })).body.datos.some(h => h.campo === 'VENDEDOR'), 'La reasignación queda en el historial');
     r = await api('GET', '/api/sync/cambios?desde=' + new Date(Date.now() - 3600000).toISOString(), { token: VEN });
     log(r.body.cambios.leads > 0 && r.body.cambios.notificaciones > 0, 'Sincronización: la app sabe qué cambió desde la última vez');
+
+    console.log('\nLogin con Google (API externa, Semana 15-16)');
+    r = await api('POST', '/api/auth/google', { body: { idToken: 'prueba:rosa@ferreteriaeltambo.pe:Rosa', app: 'PORTAL' }, op: false });
+    log(r.status === 200 && r.body.usuario.rol === 'cliente' && r.body.token, 'Una cuenta de Google con el correo de un cliente entra al Portal');
+    r = await api('POST', '/api/auth/google', { body: { idToken: 'prueba:nuevo.cliente@gmail.com:Ana Quispe', app: 'PORTAL' }, op: false });
+    log(r.status === 404 && r.body.error === 'SIN_CUENTA' && r.body.correo === 'nuevo.cliente@gmail.com', 'Una cuenta de Google nueva debe completar el registro (404 SIN_CUENTA con su correo)');
+    r = await api('POST', '/api/portal/registro', { op: false, body: { ruc: '20588889991', razonSocial: 'Minimarket Ana EIRL', contacto: 'Ana Quispe', telefono: '912345678', correo: 'otro@x.pe', googleIdToken: 'prueba:nuevo.cliente@gmail.com:Ana Quispe', aceptaTratamientoDatos: true } });
+    log(r.status === 201 && r.body.usuario.correo === 'nuevo.cliente@gmail.com', 'Registro con Google: usa el correo verificado y no exige contraseña');
+    r = await api('POST', '/api/auth/google', { body: { idToken: 'prueba:nuevo.cliente@gmail.com:Ana Quispe', app: 'PORTAL' }, op: false });
+    log(r.status === 200 && r.body.usuario.empresa === 'Minimarket Ana EIRL', 'Después del registro, Google inicia sesión directamente');
+    r = await api('POST', '/api/auth/google', { body: { idToken: 'prueba:carlos@crmandino.pe:Carlos', app: 'PORTAL' }, op: false });
+    log(r.status === 403, 'Un vendedor no entra al Portal con Google (403)');
+    r = await api('POST', '/api/auth/google', { body: { idToken: 'token-falso' }, op: false });
+    log(r.status === 401, 'Un token de Google falso se rechaza (401)');
 
     console.log(`\n${fallas ? '✖' : '✔'} ${ok} pruebas correctas, ${fallas} con error`);
     srv.close();

@@ -7,6 +7,8 @@
 //   GET  /api/portal/ofertas                         ofertas vigentes · RF-P10
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const { verificarTokenGoogle } = require('../google');
 const { query, transaccion } = require('../db');
 const { requiereSesion, permitirRoles, generarToken } = require('../middleware/auth');
 const { ejecutarOperacion } = require('../operaciones');
@@ -24,8 +26,10 @@ router.post('/registro', async (req, res, next) => {
         const razon = String(b.razonSocial ?? '').trim();
         const contacto = String(b.contacto ?? '').trim();
         const telefono = String(b.telefono ?? '').replace(/\D/g, '');
-        const correo = String(b.correo ?? '').trim().toLowerCase();
-        const clave = String(b.clave ?? '');
+        // Registro con Google (API externa): el correo verificado viene del token; la contraseña es opcional
+        const google = b.googleIdToken ? await verificarTokenGoogle(b.googleIdToken) : null;
+        const correo = google ? google.correo : String(b.correo ?? '').trim().toLowerCase();
+        const clave = google && String(b.clave ?? '').length < 8 ? crypto.randomBytes(18).toString('base64') : String(b.clave ?? '');
         const errores = [];
         if (!/^(10|15|17|20)\d{9}$/.test(ruc)) errores.push(['RUC_INVALIDO', 'El RUC debe tener 11 dígitos y empezar en 10, 15, 17 o 20.']);
         if (!razon) errores.push(['RAZON_SOCIAL_OBLIGATORIA', 'Escribe la razón social de la empresa.']);
@@ -53,9 +57,9 @@ router.post('/registro', async (req, res, next) => {
             }
             const hash = await bcrypt.hash(clave, 10);
             const u = await c.query(
-                `INSERT INTO usuarios (nombre, correo, clave_hash, rol, cliente_id, telefono, consentimiento_en)
-                 VALUES ($1, $2, $3, 'cliente', $4, $5, now()) RETURNING id, nombre, correo, rol, cliente_id`,
-                [contacto, correo, hash, clienteId, telefono]);
+                `INSERT INTO usuarios (nombre, correo, clave_hash, rol, cliente_id, telefono, consentimiento_en, google_sub)
+                 VALUES ($1, $2, $3, 'cliente', $4, $5, now(), $6) RETURNING id, nombre, correo, rol, cliente_id`,
+                [contacto, correo, hash, clienteId, telefono, google ? google.sub : null]);
             return { usuario: u.rows[0], vinculado, empresa };
         });
         const u = resultado.usuario;
