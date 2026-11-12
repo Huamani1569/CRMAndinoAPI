@@ -211,6 +211,94 @@ svg.ic{width:22px;height:22px;fill:currentColor;flex:none}
   .cab{padding:12px 16px;flex-wrap:wrap}
   .cab .der{margin-left:0}
 }
+
+/* =====================================================================
+   CAPA "LIQUID GLASS"
+   Página: Liquid Glass completo (vidrio translúcido, desenfoque, brillo
+   especular, cápsulas). Pantallas del celular: Material 3 con detalles de
+   vidrio, que es el estilo que tendrán las apps Android.
+   ===================================================================== */
+:root{
+  --lg-bg:#EAF0F7; --lg-panel:rgba(255,255,255,.52); --lg-panel-2:rgba(255,255,255,.70);
+  --lg-borde:rgba(255,255,255,.78); --lg-brillo:rgba(255,255,255,.95); --lg-sombra:0 1px 1px rgba(20,40,66,.04),0 18px 40px -16px rgba(20,40,66,.30);
+  --lg-blur:blur(26px) saturate(185%);
+  --pag:#EAF0F7; --panel:var(--lg-panel); --panel-borde:var(--lg-borde);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --lg-bg:#0B1220; --lg-panel:rgba(30,42,62,.46); --lg-panel-2:rgba(30,42,62,.70);
+    --lg-borde:rgba(255,255,255,.14); --lg-brillo:rgba(255,255,255,.22); --pag:#0B1220; --panel:var(--lg-panel); --panel-borde:var(--lg-borde); }
+}
+:root[data-theme="dark"]{ --lg-bg:#0B1220; --lg-panel:rgba(30,42,62,.46); --lg-panel-2:rgba(30,42,62,.70);
+  --lg-borde:rgba(255,255,255,.14); --lg-brillo:rgba(255,255,255,.22); --pag:#0B1220; --panel:var(--lg-panel); --panel-borde:var(--lg-borde); }
+
+body{background:var(--lg-bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",Roboto,"Segoe UI",Arial,sans-serif;letter-spacing:-.006em}
+body::before{content:"";position:fixed;inset:-20vmax;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(38vmax 38vmax at 12% 18%, rgba(27,153,139,.55), transparent 60%),
+    radial-gradient(42vmax 42vmax at 88% 12%, rgba(31,58,95,.55), transparent 62%),
+    radial-gradient(36vmax 36vmax at 70% 92%, rgba(242,169,59,.45), transparent 60%),
+    radial-gradient(30vmax 30vmax at 20% 88%, rgba(120,150,255,.35), transparent 60%);
+  filter:blur(30px);animation:lg-flota 26s ease-in-out infinite alternate}
+@keyframes lg-flota{to{transform:translate(3vmax,2vmax) scale(1.06)}}
+body.solo::before{display:none}
+
+/* Paneles de la página: vidrio */
+.cab,nav.mapa,.nota{background:var(--lg-panel)!important;-webkit-backdrop-filter:var(--lg-blur);backdrop-filter:var(--lg-blur);
+  border:1px solid var(--lg-borde)!important;box-shadow:inset 0 1px 0 var(--lg-brillo),var(--lg-sombra)}
+.cab{position:sticky;top:12px;z-index:20;margin:12px auto 0;max-width:1296px;border-radius:999px;padding:10px 12px 10px 18px;border-bottom:1px solid var(--lg-borde)!important}
+.cab h1{font-weight:700;letter-spacing:-.02em}
+nav.mapa,.nota{border-radius:26px}
+nav.mapa{top:96px}.nota{top:96px}
+.mapa button{border-radius:14px;transition:background .2s,transform .15s}
+.mapa button[aria-current="true"]{background:linear-gradient(135deg,#1F3A5F,#2B5C8F);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 6px 14px -6px rgba(31,58,95,.7)}
+.btn-pag{border-radius:999px;background:var(--lg-panel-2);border:1px solid var(--lg-borde);-webkit-backdrop-filter:var(--lg-blur);backdrop-filter:var(--lg-blur);
+  box-shadow:inset 0 1px 0 var(--lg-brillo);font-weight:600;padding:8px 16px}
+.btn-pag[aria-pressed="true"]{background:linear-gradient(135deg,#1F3A5F,#2B5C8F);border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 6px 14px -6px rgba(31,58,95,.7)}
+.chip-n{border-radius:999px;padding:3px 10px;background:var(--lg-panel-2);border:1px solid var(--lg-borde)}
+.chip-n.t{background:rgba(27,153,139,.18)}.chip-n.d{background:rgba(242,169,59,.22)}
+.todas figure figcaption{background:var(--lg-panel);-webkit-backdrop-filter:var(--lg-blur);backdrop-filter:var(--lg-blur);border:1px solid var(--lg-borde);border-radius:999px;padding:5px 14px}
+
+/* Marco del celular: titanio con reflejo */
+.tel{background:linear-gradient(145deg,#2b3340,#0b0f16 45%,#232a35);box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 30px 60px -24px rgba(11,18,32,.55),0 8px 18px -10px rgba(11,18,32,.4)}
+
+/* ---- Pantallas: Material 3 + vidrio ---- */
+.pant{background:
+  radial-gradient(240px 200px at 0% 0%, rgba(27,153,139,.18), transparent 70%),
+  radial-gradient(260px 220px at 100% 18%, rgba(31,58,95,.16), transparent 70%),
+  radial-gradient(260px 220px at 60% 100%, rgba(242,169,59,.16), transparent 70%), #F3F6FA}
+.estado.osc{background:transparent;color:var(--txt)}
+.bar{background:rgba(255,255,255,.55);color:var(--txt);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
+  border-bottom:1px solid rgba(255,255,255,.7);box-shadow:0 1px 0 rgba(20,40,66,.05)}
+.bar h2{font-weight:600}
+.ib:hover{background:rgba(31,58,95,.08)}
+.ib .pto{background:#E5484D;color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+.card,.acc,.oferta,.foto,.cats button{background:rgba(255,255,255,.66);-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);
+  border:1px solid rgba(255,255,255,.82);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 8px 22px -14px rgba(20,40,66,.35)}
+.card,.acc,.oferta{border-radius:22px}
+.dest{border-radius:24px;background:linear-gradient(140deg,rgba(31,58,95,.92),rgba(43,92,143,.86));box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 14px 30px -16px rgba(31,58,95,.8)}
+.dest .b{border-radius:999px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+.b{border-radius:999px}
+.b.p{background:linear-gradient(180deg,#2B5C8F,#1F3A5F);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 18px -10px rgba(31,58,95,.9)}
+.b.t{background:linear-gradient(180deg,#22B3A3,#1B998B);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 8px 18px -10px rgba(27,153,139,.9)}
+.b.o,.b.r{background:rgba(255,255,255,.6);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.campo input,.campo textarea,.campo select{border-radius:14px;background:rgba(255,255,255,.72);border-color:rgba(20,40,66,.12)}
+.nav{position:absolute;left:12px;right:12px;bottom:12px;border-radius:30px;padding:6px 4px;
+  background:rgba(255,255,255,.62);-webkit-backdrop-filter:blur(24px) saturate(190%);backdrop-filter:blur(24px) saturate(190%);
+  border:1px solid rgba(255,255,255,.85);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 12px 28px -14px rgba(20,40,66,.45)}
+.nav button span.p{border-radius:999px}
+.nav button.act span.p{background:rgba(31,58,95,.12)}
+.pant:has(.nav) .cuerpo{padding-bottom:92px}
+.tabs{background:rgba(255,255,255,.5);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.7)}
+.hoja{background:rgba(15,23,36,.28);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.hoja .in{background:rgba(255,255,255,.80);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);border-radius:30px 30px 0 0;
+  border-top:1px solid rgba(255,255,255,.9);box-shadow:inset 0 1px 0 #fff}
+.snack{bottom:92px;border-radius:18px;background:rgba(28,36,48,.78);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.fab{bottom:94px;border-radius:999px;background:linear-gradient(180deg,#F7BC5E,#F2A93B);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 10px 22px -10px rgba(242,169,59,.9)}
+.banner{border-radius:16px;background:rgba(253,236,208,.8);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.7)}
+.tag{border-radius:999px}
+.li{border-bottom-color:rgba(20,40,66,.08)}
+.li .ico{border-radius:14px;background:rgba(31,58,95,.10)}
+.sw.on{background:#1B998B}
 </style>
 </head>
 <body>
@@ -218,7 +306,7 @@ svg.ic{width:22px;height:22px;fill:currentColor;flex:none}
   <svg viewBox="0 0 108 108" aria-hidden="true"><circle cx="54" cy="54" r="54" fill="#1F3A5F"/><g transform="translate(54 54) scale(1.2) translate(-54 -54)"><path fill="#1B998B" d="M26,76 L48,40 L70,76 Z"/><path fill="#E8EEF5" d="M44,76 L64,50 L84,76 Z"/><path fill="none" stroke="#F2A93B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" d="M28,66 L44,58 L56,64 L74,44"/><path fill="#F2A93B" d="M81,36 L68,41 L77,50 Z"/></g></svg>
   <div>
     <h1>CRM Andino · App Portal del Cliente</h1>
-    <p>Prototipo navegable · Proyecto Final, Semana 11 · Jean Piero Huamani Rodriguez</p>
+    <p>Prototipo navegable · Proyecto Final · Jean Piero Huamani Rodriguez y Anghelina Porras Torres</p>
   </div>
   <div class="der">
     <button class="btn-pag" id="btnUna" aria-pressed="true">Navegar</button>
