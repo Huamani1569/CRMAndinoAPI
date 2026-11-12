@@ -17,6 +17,8 @@ const { puntuarLead } = require('../ml');
 
 const router = express.Router();
 
+// Solo vendedor y supervisor trabajan con leads, interacciones y tareas
+router.use(permitirRoles(ROL_VENDEDOR, ROL_SUPERVISOR));
 router.param('id', (req, res, next, id) => {
     if (!/^\d+$/.test(id)) return res.status(404).json({ error: 'NO_ENCONTRADO', mensaje: 'Identificador no válido.' });
     next();
@@ -265,7 +267,7 @@ router.put('/:id/etapa', permitirRoles(ROL_VENDEDOR, ROL_SUPERVISOR), (req, res,
             clienteId = c.rows[0].id;
         }
         await cliente.query(
-            `UPDATE leads SET etapa = $2, motivo_perdida = CASE WHEN $2 = 'PERDIDO' THEN $3 ELSE motivo_perdida END,
+            `UPDATE leads SET etapa = $2::varchar, motivo_perdida = CASE WHEN $2::varchar = 'PERDIDO' THEN $3::varchar ELSE motivo_perdida END,
                     cliente_id = $4, version = version + 1, actualizado_en = now() WHERE id = $1`,
             [actual.id, etapa, motivo, clienteId]);
         await puntuarLead(cliente, actual.id);

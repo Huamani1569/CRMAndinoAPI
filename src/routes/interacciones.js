@@ -8,11 +8,13 @@ const express = require('express');
 const { query } = require('../db');
 const { permitirRoles } = require('../middleware/auth');
 const { ejecutarOperacion } = require('../operaciones');
-const { ErrorHttp, TIPOS_INTERACCION, RESULTADOS_CONTACTO, ROL_VENDEDOR, esUuid, esFechaIso, esFechaHoraIso } = require('../errores');
+const { ErrorHttp, TIPOS_INTERACCION, RESULTADOS_CONTACTO, ROL_VENDEDOR, ROL_SUPERVISOR, esUuid, esFechaIso, esFechaHoraIso } = require('../errores');
 const { puntuarLead } = require('../ml');
 const { validarIdParam, leadPermitido } = require('./comun');
 
 const router = express.Router();
+// Solo vendedor y supervisor trabajan con leads, interacciones y tareas
+router.use(permitirRoles(ROL_VENDEDOR, ROL_SUPERVISOR));
 validarIdParam(router);
 
 const SELECT_INTERACCION = `

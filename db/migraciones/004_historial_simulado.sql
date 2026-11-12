@@ -9,7 +9,7 @@ SET LOCAL crm.usuario_id = '';
 ALTER TABLE leads DISABLE TRIGGER trg_reglas_lead;
 ALTER TABLE solicitudes_servicio DISABLE TRIGGER trg_reglas_solicitud;
 ALTER TABLE respuestas_campana DISABLE TRIGGER trg_envio_campana;
-INSERT INTO metas_ventas (mes, monto) SELECT to_char(m, 'YYYY-MM'), 200000 FROM generate_series('2025-11-01'::date, '2027-06-01'::date, interval '1 month') m ON CONFLICT DO NOTHING;
+INSERT INTO metas_ventas (mes, monto) SELECT to_char(m, 'YYYY-MM'), 450000 FROM generate_series('2025-11-01'::date, '2027-06-01'::date, interval '1 month') m ON CONFLICT DO NOTHING;
 INSERT INTO campanas (nombre, segmento, oferta, producto_id, descuento_pct, canales, inicio, fin, estado, creada_por, creado_en)
 SELECT v.nombre, v.seg::jsonb, v.oferta, p.id, v.d, ARRAY['PUSH','WHATSAPP','CORREO','LLAMADA','VISITA']::varchar(10)[], v.i::date, v.f::date, 'FINALIZADA',
        (SELECT id FROM usuarios WHERE correo = 'supervisor@crmandino.pe'), v.i::date

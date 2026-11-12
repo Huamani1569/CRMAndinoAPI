@@ -1,11 +1,14 @@
 {
   "name": "crm-andino-api",
-  "version": "1.0.0",
-  "description": "API REST del caso CRM Andino Perú (Semana 8): autenticación, leads, interacciones, tareas y sincronización offline.",
+  "version": "2.0.0",
+  "description": "API REST del caso CRM Andino Perú: parcial (Semana 8) ampliado para el Proyecto Final (Portal, cotizaciones, visitas, servicio, campañas, analítica y ML).",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "init-db": "node scripts/init-db.js"
+    "init-db": "node scripts/init-db.js",
+    "migrar": "node src/migraciones.js",
+    "entrenar": "node scripts/entrenar.js",
+    "test": "node pruebas/api.test.js"
   },
   "engines": {
     "node": ">=18"

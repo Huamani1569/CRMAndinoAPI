@@ -26,13 +26,20 @@ function crearApp() {
     app.get('/', (req, res) => {
         res.json({
             servicio: 'CRM Andino Perú - API REST',
+            version: '2.0.0 (Proyecto Final: Semanas 12 a 14)',
+            documentacion: 'https://crm-andino-diseno-s11.vercel.app/api/',
             endpoints: [
                 'GET  /api/salud',
-                'POST /api/auth/login',
-                'GET|POST /api/leads · GET|PUT|DELETE /api/leads/{id}',
-                'GET|POST /api/interacciones · GET|PUT|DELETE /api/interacciones/{id}',
-                'GET|POST /api/tareas · GET|PUT|DELETE /api/tareas/{id}',
-                'GET  /api/usuarios/vendedores',
+                'POST /api/auth/login · POST /api/portal/registro',
+                'GET|POST /api/leads · GET|PUT|DELETE /api/leads/{id} · PUT /api/leads/{id}/etapa · PUT /api/leads/reasignar',
+                'GET|POST /api/interacciones · GET|POST /api/tareas · GET|POST /api/visitas · GET /api/visitas/ruta',
+                'GET /api/productos · GET|POST /api/cotizaciones · PUT /api/cotizaciones/{id}/respuesta|aprobacion',
+                'GET|POST /api/portal/solicitudes-cotizacion · GET /api/portal/ofertas · GET|PUT /api/portal/perfil',
+                'GET|POST /api/servicio/solicitudes · PUT /api/servicio/solicitudes/{id}/estado · POST .../calificacion',
+                'GET|POST /api/campanas · POST /api/campanas/{id}/envio|respuesta · GET /api/campanas/{id}/resultados',
+                'GET /api/clientes · GET /api/ml/recomendaciones/{clienteId} · POST /api/ml/entrenar',
+                'GET /api/analitica/resumen|embudo|pronostico|ventas-mensuales|clientes-riesgo|clientes-rentables|servicio|modelos',
+                'GET /api/notificaciones · GET /api/sync/cambios',
                 'GET  /api/dev/estado · GET /api/dev/falla?activar=1|0'
             ]
         });
@@ -56,6 +63,19 @@ function crearApp() {
     app.use('/api/interacciones', requiereSesion, require('./routes/interacciones'));
     app.use('/api/tareas', requiereSesion, require('./routes/tareas'));
     app.use('/api/usuarios', requiereSesion, require('./routes/usuarios'));
+
+    // Proyecto Final (Semanas 12 a 14)
+    app.use('/api/portal', require('./routes/portal'));            // el registro no pide sesión; el resto sí (dentro del router)
+    app.use('/api/productos', requiereSesion, require('./routes/productos'));
+    app.use('/api/cotizaciones', requiereSesion, require('./routes/cotizaciones'));
+    app.use('/api/visitas', requiereSesion, require('./routes/visitas'));
+    app.use('/api/servicio', requiereSesion, require('./routes/servicio'));
+    app.use('/api/campanas', requiereSesion, require('./routes/campanas'));
+    const analitica = require('./routes/analitica');
+    app.use('/api/analitica', requiereSesion, analitica);
+    app.post('/api/ml/entrenar', requiereSesion, ...analitica.entrenar);
+    app.use('/api', requiereSesion, require('./routes/clientes'));         // /api/clientes · /api/ml/recomendaciones
+    app.use('/api', requiereSesion, require('./routes/notificaciones'));   // /api/notificaciones · /api/dispositivos · /api/sync
 
     app.use((req, res) => res.status(404).json({ error: 'RUTA_NO_EXISTE', mensaje: `No existe ${req.method} ${req.path}` }));
 

@@ -167,7 +167,7 @@ async function entrenarClientes() {
             const valor = Math.max(0, Math.min(100, Math.round(rfm * 0.85 + (f.csat - 3) * 7.5 + Math.min(f.dias_antiguedad / 365, 2) * 2.5)));
             const m = mapaMargen.get(f.id);
             const margenAnual = m ? m.margen / m.anios : 0;
-            const anios = Math.min(10, 1 / Math.max(prob, 0.1));
+            const anios = Math.min(5, 1 / Math.max(prob, 0.2));   // años esperados como cliente (máx. 5)
             const cliente = await c.query('SELECT costo_adquisicion::float8 AS cac FROM clientes WHERE id = $1', [f.id]);
             const cltv = margenAnual * anios - cliente.rows[0].cac;
             await c.query(`UPDATE clientes SET puntaje_valor = $2, prob_cancelacion = $3, factores_riesgo = $4, cltv = $5, actualizado_en = now()

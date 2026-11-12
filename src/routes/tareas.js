@@ -13,6 +13,8 @@ const { notificar } = require('../servicios');
 const { validarIdParam, leadPermitido } = require('./comun');
 
 const router = express.Router();
+// Solo vendedor y supervisor trabajan con leads, interacciones y tareas
+router.use(permitirRoles(ROL_VENDEDOR, ROL_SUPERVISOR));
 validarIdParam(router);
 
 const SELECT_TAREA = `

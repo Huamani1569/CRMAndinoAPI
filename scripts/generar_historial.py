@@ -294,7 +294,7 @@ print_('ALTER TABLE solicitudes_servicio DISABLE TRIGGER trg_reglas_solicitud;')
 print_('ALTER TABLE respuestas_campana DISABLE TRIGGER trg_envio_campana;')
 
 # metas de ventas
-print_("INSERT INTO metas_ventas (mes, monto) SELECT to_char(m, 'YYYY-MM'), 200000 FROM generate_series('2025-11-01'::date, '2027-06-01'::date, interval '1 month') m ON CONFLICT DO NOTHING;")
+print_("INSERT INTO metas_ventas (mes, monto) SELECT to_char(m, 'YYYY-MM'), 450000 FROM generate_series('2025-11-01'::date, '2027-06-01'::date, interval '1 month') m ON CONFLICT DO NOTHING;")
 
 # campañas
 vals = ',\n'.join(f"({q(c['nombre'])}, '{{\"sinProducto\":\"{c['cod']}\"}}', {q(c['oferta'])}, '{c['cod']}', {c['desc']}, '{c['inicio']}', '{c['fin']}')" for c in campanas)

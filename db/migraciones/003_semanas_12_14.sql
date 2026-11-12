@@ -55,6 +55,16 @@ CREATE TABLE IF NOT EXISTS modelos_ml (
     entrenado_en  TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
+
+-- Foto del problema adjunta a una solicitud de servicio (RF-P07). Se guarda en la base
+-- para que funcione igual en la laptop y en un servidor sin disco (Render).
+CREATE TABLE IF NOT EXISTS fotos_solicitud (
+    solicitud_id  INT          PRIMARY KEY REFERENCES solicitudes_servicio(id),
+    tipo_mime     VARCHAR(30)  NOT NULL CHECK (tipo_mime IN ('image/jpeg', 'image/png', 'image/webp')),
+    datos         BYTEA        NOT NULL CHECK (octet_length(datos) <= 5 * 1024 * 1024),
+    subida_en     TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
 -- Meta de ventas del mes (para el pronóstico de la App Supervisor)
 CREATE TABLE IF NOT EXISTS metas_ventas (
     mes    CHAR(7)       PRIMARY KEY CHECK (mes ~ '^[0-9]{4}-[0-9]{2}$'),
