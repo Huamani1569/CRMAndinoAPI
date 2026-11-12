@@ -44,6 +44,42 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--txt2
 .er{background:#fff;border:1px solid var(--borde);border-radius:18px;padding:12px;overflow:auto}
 .er img{display:block;width:100%;min-width:760px;height:auto}
 footer{text-align:center;color:var(--txt2);font-size:13px;padding:0 16px 40px}
+
+/* ============ LIQUID GLASS ============ */
+:root{--g-panel:rgba(255,255,255,.55);--g-panel2:rgba(255,255,255,.72);--g-borde:rgba(255,255,255,.8);--g-brillo:rgba(255,255,255,.95);
+  --g-blur:blur(28px) saturate(185%);--g-sombra:0 1px 1px rgba(20,40,66,.04),0 22px 48px -20px rgba(20,40,66,.35);--bg:#E9EFF6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--g-panel:rgba(30,42,62,.48);--g-panel2:rgba(30,42,62,.7);--g-borde:rgba(255,255,255,.14);--g-brillo:rgba(255,255,255,.2);--bg:#0B1220}}
+:root[data-theme="dark"]{--g-panel:rgba(30,42,62,.48);--g-panel2:rgba(30,42,62,.7);--g-borde:rgba(255,255,255,.14);--g-brillo:rgba(255,255,255,.2);--bg:#0B1220}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",Roboto,"Segoe UI",Arial,sans-serif;letter-spacing:-.008em;background:var(--bg)}
+body::before{content:"";position:fixed;inset:-20vmax;z-index:-1;pointer-events:none;filter:blur(34px);
+  background:radial-gradient(40vmax 40vmax at 10% 10%,rgba(27,153,139,.6),transparent 60%),
+             radial-gradient(46vmax 46vmax at 92% 6%,rgba(31,58,95,.65),transparent 62%),
+             radial-gradient(38vmax 38vmax at 75% 95%,rgba(242,169,59,.5),transparent 60%),
+             radial-gradient(32vmax 32vmax at 15% 90%,rgba(120,150,255,.35),transparent 60%);
+  animation:flota 26s ease-in-out infinite alternate}
+@keyframes flota{to{transform:translate(3vmax,2vmax) scale(1.06)}}
+.hero{background:transparent;color:var(--txt);padding:28px 16px 40px}
+.hero .w{background:var(--g-panel);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);border:1px solid var(--g-borde);
+  border-radius:34px;padding:34px clamp(20px,4vw,44px);box-shadow:inset 0 1px 0 var(--g-brillo),var(--g-sombra)}
+.hero small{opacity:1;color:var(--turq);font-weight:700}
+.hero p{opacity:1;color:var(--txt2)}
+.hero h1{font-weight:800;letter-spacing:-.035em;background:linear-gradient(120deg,#1F3A5F,#1B998B 60%,#c98612);-webkit-background-clip:text;background-clip:text;color:transparent}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hero h1{background:linear-gradient(120deg,#cfe2f7,#5fe0cf 60%,#f7c46e);-webkit-background-clip:text;background-clip:text}}
+.hero svg circle{fill:#1F3A5F;fill-opacity:1}
+.datos{opacity:1;color:var(--txt2)}
+.datos span{background:var(--g-panel2);border:1px solid var(--g-borde);border-radius:999px;padding:5px 12px}
+.datos b{color:var(--azul)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .datos b{color:#8fb8e8}}
+.tarjetas{margin-top:0}
+.t,.arch,.er{background:var(--g-panel);-webkit-backdrop-filter:var(--g-blur);backdrop-filter:var(--g-blur);border:1px solid var(--g-borde);
+  border-radius:28px;box-shadow:inset 0 1px 0 var(--g-brillo),var(--g-sombra)}
+.er{background:rgba(255,255,255,.88)}
+a.t:hover{transform:translateY(-3px);box-shadow:inset 0 1px 0 var(--g-brillo),0 28px 56px -22px rgba(20,40,66,.45)}
+.t .ir{align-self:flex-start;padding:9px 16px;border-radius:999px;background:linear-gradient(180deg,#2B5C8F,#1F3A5F);color:#fff!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 18px -10px rgba(31,58,95,.9);font-size:14px}
+.t .n{display:inline-block;align-self:flex-start;padding:3px 10px;border-radius:999px;background:rgba(27,153,139,.14)}
+.f code{border-radius:999px;background:var(--g-panel2);border:1px solid var(--g-borde)}
+h3{color:var(--txt2)}
 </style>
 </head>
 <body>
@@ -55,7 +91,7 @@ footer{text-align:center;color:var(--txt2);font-size:13px;padding:0 16px 40px}
     </div>
     <h1>Entrega de diseño — Semana 11</h1>
     <p>Modelo de datos ampliado, contrato de la API y prototipo de las pantallas del Portal del Cliente. Todo parte del parcial de la Semana 8, sin romperlo.</p>
-    <div class="datos"><span><b>Alumno</b> Jean Piero Huamani Rodriguez</span><span><b>Curso</b> Desarrollo de Aplicaciones Móviles</span><span><b>Docente</b> Guillermo Peña</span></div>
+    <div class="datos"><span><b>Integrantes</b> Jean Piero Huamani Rodriguez · Anghelina Porras Torres</span><span><b>Curso</b> Desarrollo de Aplicaciones Móviles</span><span><b>Docente</b> Guillermo Peña</span></div>
   </div>
 </header>
 <main class="w">
