@@ -18,6 +18,8 @@ async function ejecutarOperacion(req, res, next, entidad, tipoOperacion, logica)
     const cliente = await obtenerPool().connect();
     try {
         await cliente.query('BEGIN');
+        // Quién hace el cambio: los triggers lo guardan en el historial (RNF-09)
+        await cliente.query("SELECT set_config('crm.usuario_id', $1, true)", [String(req.usuario.id)]);
 
         // 1) Se "reserva" el UUID de la operación. Si ya existía, es un DUPLICADO.
         const reserva = await cliente.query(
@@ -74,7 +76,11 @@ async function ejecutarOperacion(req, res, next, entidad, tipoOperacion, logica)
 function convertirError(error) {
     if (error instanceof ErrorHttp) return error;
     if (error && typeof error.code === 'string' && error.code.startsWith('23')) {
-        return new ErrorHttp(422, 'DATOS_INVALIDOS', 'Los datos no cumplen las reglas de la base de datos: ' + (error.detail || error.message));
+        // Reglas que lanza un trigger (RAISE ... check_violation): el mensaje ya es claro para el usuario
+        if (error.code === '23514' && !error.constraint) {
+            return new ErrorHttp(422, 'REGLA_DE_NEGOCIO', error.message);
+        }
+        return new ErrorHttp(422, 'DATOS_INVALIDOS', 'Los datos no cumplen las reglas de la base de datos: ' + (error.detail || error.constraint || error.message));
     }
     return null;
 }

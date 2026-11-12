@@ -7,7 +7,7 @@ function secreto() {
 
 function generarToken(usuario) {
     return jwt.sign(
-        { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol },
+        { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol, clienteId: usuario.cliente_id || null },
         secreto(),
         { expiresIn: '30d' }
     );

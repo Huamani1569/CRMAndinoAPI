@@ -12,10 +12,15 @@ class ErrorHttp extends Error {
     }
 }
 
-const ETAPAS = ['Prospecto', 'Contactado', 'Propuesta', 'Negociación', 'Cerrado'];
-const TIPOS_INTERACCION = ['Llamada', 'Correo', 'Reunión'];
-const ROL_VENDEDOR = 'cliente';
-const ROL_SUPERVISOR = 'administrador';
+// Proyecto Final: embudo y roles ampliados (ver db/migraciones/001_proyecto_final.sql)
+const ETAPAS = ['NUEVO', 'CONTACTADO', 'CALIFICADO', 'COTIZADO', 'GANADO', 'PERDIDO'];
+const ETAPAS_ABIERTAS = ['NUEVO', 'CONTACTADO', 'CALIFICADO', 'COTIZADO'];
+const TIPOS_INTERACCION = ['Llamada', 'WhatsApp', 'Correo', 'Reunión', 'Visita'];
+const RESULTADOS_CONTACTO = ['CONTESTO', 'NO_CONTESTO', 'INTERESADO', 'NO_INTERESADO'];
+const ROL_VENDEDOR = 'vendedor';
+const ROL_SUPERVISOR = 'supervisor';
+const ROL_AGENTE = 'agente';
+const ROL_CLIENTE = 'cliente';
 
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REGEX_FECHA = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,6 +35,17 @@ function esFechaIso(valor) {
     return !Number.isNaN(fecha.getTime()) && fecha.toISOString().startsWith(valor);
 }
 
+// Fecha y hora ISO completa (2026-11-11T15:30:00Z o con zona horaria)
+function esFechaHoraIso(valor) {
+    return typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(valor) && !Number.isNaN(new Date(valor).getTime());
+}
+
+// Hoy en Lima (AAAA-MM-DD), para no aceptar fechas pasadas
+function hoyLima() {
+    return new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 module.exports = {
-    ErrorHttp, ETAPAS, TIPOS_INTERACCION, ROL_VENDEDOR, ROL_SUPERVISOR, esUuid, esFechaIso
+    ErrorHttp, ETAPAS, ETAPAS_ABIERTAS, TIPOS_INTERACCION, RESULTADOS_CONTACTO,
+    ROL_VENDEDOR, ROL_SUPERVISOR, ROL_AGENTE, ROL_CLIENTE, esUuid, esFechaIso, esFechaHoraIso, hoyLima
 };
